@@ -14,7 +14,7 @@ import PerspectiveStory from "./components/PerspectiveStory";
 import ExperimentRoom from "./components/ExperimentRoom";
 import PointerManifesto from "./components/PointerManifesto";
 import { MotionPreference, Reveal, useMotionPaused } from "./components/Motion";
-import { capabilities, site, type Project } from "./data/content";
+import { capabilities, projects, site, type Project } from "./data/content";
 
 function Header() {
   const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ function Header() {
         className={open ? "main-nav is-open" : "main-nav"}
       >
         <a href="#work" onClick={() => setOpen(false)}>
-          Work <span>03</span>
+          Work <span>{String(projects.length).padStart(2, "0")}</span>
         </a>
         <a href="#about" onClick={() => setOpen(false)}>
           About
@@ -337,9 +337,7 @@ export default function App() {
             systemReduced={systemReduced}
           />
           <Dialog
-            title={
-              selected ? `${selected.name} — visual concept` : "Visual concept"
-            }
+            title={selected ? `${selected.name} — project` : "Project"}
             open={!!selected}
             onClose={() => setSelected(null)}
           >
@@ -353,15 +351,54 @@ export default function App() {
                 </div>
                 <div className="dialog-copy">
                   <span className="eyebrow mono">
-                    VISUAL CONCEPT / {selected.number}
+                    PROJECT / {selected.number}
                   </span>
                   <h2>{selected.name}</h2>
                   <p>{selected.description}</p>
-                  <p className="concept-note mono">
-                    A SELF-INITIATED VISUAL STUDY.
-                    <br />
-                    REAL PROJECTS ARE COMING SOON.
-                  </p>
+                  <ul
+                    className="project-stack"
+                    aria-label="Project technologies"
+                  >
+                    {selected.stack.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                  <ul className="project-highlights">
+                    {selected.highlights.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                  <div className="project-case-actions">
+                    {selected.preview ? (
+                      <a
+                        className="project-primary-action"
+                        href={selected.preview}
+                        onClick={() => setSelected(null)}
+                      >
+                        Try the React preview
+                      </a>
+                    ) : (
+                      <a
+                        className="project-primary-action"
+                        href={selected.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Visit website
+                      </a>
+                    )}
+                    {selected.source && (
+                      <a
+                        href={selected.source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="project-source-action"
+                      >
+                        Source repository
+                      </a>
+                    )}
+                  </div>
+                  <p className="project-context-note">{selected.note}</p>
                   <button
                     className="text-link"
                     onClick={() => setSelected(null)}
@@ -391,7 +428,8 @@ export default function App() {
                 <>
                   <p>
                     This little corner of the internet is taking shape. Contact
-                    details and the full project collection are coming soon.
+                    details are coming soon. Explore the current project
+                    collection in the meantime.
                   </p>
                   <button
                     className="contact-button"

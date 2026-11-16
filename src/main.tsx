@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import Router from "./Router";
 import "./styles.css";
 import "./immersive.css";
 import "./story.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Router />
   </React.StrictMode>,
 );

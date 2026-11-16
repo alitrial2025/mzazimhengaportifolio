@@ -34,20 +34,20 @@ export default function ArchiveWork({
       <div className="archive-top mono">
         <span>01 / THE COLLECTION</span>
         <span>AN OPEN INDEX. ALWAYS EVOLVING.</span>
-        <span>001 — 003</span>
+        <span>001 — {String(projects.length).padStart(3, "0")}</span>
       </div>
       <div className="archive-layout">
         <div className="archive-index">
           <h2 id="work-title">
             Selected
             <br />
-            <i>fragments.</i>
+            <i>work.</i>
           </h2>
           <p className="archive-intro">
-            A thought, a form, a feeling.
-            <br />A few things I couldn’t leave alone.
+            Websites, interfaces, and the ideas behind them.
+            <br />A selection of things I’ve brought to life.
           </p>
-          <div className="archive-rows" aria-label="Select a visual study">
+          <div className="archive-rows" aria-label="Select a project">
             {projects.map((item, i) => (
               <button
                 key={item.id}
@@ -63,9 +63,7 @@ export default function ArchiveWork({
               >
                 <span className="archive-row-number mono">{item.number}</span>
                 <span className="archive-row-name">{item.name}</span>
-                <span className="archive-row-kind mono">
-                  {["DIGITAL", "FORM", "TYPE"][i]}
-                </span>
+                <span className="archive-row-kind mono">{item.format}</span>
               </button>
             ))}
           </div>
@@ -81,8 +79,12 @@ export default function ArchiveWork({
           <div className="archive-paper paper-middle" aria-hidden="true" />
           <div className="archive-print" id="archive-preview">
             <div className="archive-print-head mono">
-              <span>VISUAL STUDY / {project.number}</span>
-              <span>SELF-INITIATED</span>
+              <span>PROJECT / {project.number}</span>
+              <span>
+                {project.format === "WEB"
+                  ? "LIVE WEBSITE"
+                  : "KOTLIN / REACT PREVIEW"}
+              </span>
             </div>
             <div
               className="archive-art"
@@ -116,7 +118,7 @@ export default function ArchiveWork({
               <button
                 className="archive-open mono"
                 onClick={() => onSelect(project)}
-                aria-label={`Explore ${project.name}, visual concept ${project.number}`}
+                aria-label={`Explore ${project.name}`}
               >
                 OPEN
                 <br />
@@ -131,7 +133,7 @@ export default function ArchiveWork({
       </div>
       <div className="archive-bottom mono">
         <span>COLLECTED WITH INTENTION.</span>
-        <span>CONCEPTS FOR NOW. REAL PROJECTS TO FOLLOW.</span>
+        <span>REAL PROJECTS. A PRACTICE IN PROGRESS.</span>
       </div>
     </motion.section>
   );

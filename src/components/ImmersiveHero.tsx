@@ -2,7 +2,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useMotionPaused } from "./Motion";
 import { Sculpture } from "./Sculpture";
-import { site } from "../data/content";
+import { site, projects } from "../data/content";
 import LanyardBadge from "./LanyardBadge";
 
 const SpatialScene = lazy(() => import("./SpatialScene"));
@@ -94,7 +94,7 @@ export default function ImmersiveHero() {
           </div>
           <a href="#work" className="hero-discover mono">
             <span>ENTER THE EXPLORATIONS</span>
-            <span>01 — 03</span>
+            <span>01 — {String(projects.length).padStart(2, "0")}</span>
           </a>
         </motion.div>
         <div className="hero-scroll-rail" aria-hidden="true">

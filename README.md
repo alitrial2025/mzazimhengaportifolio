@@ -1,6 +1,6 @@
 # Mzazi — an interactive portfolio
 
-An editorial creative developer/designer portfolio built with React, TypeScript, Vite, Motion for React, and Three.js. The current collection contains clearly labeled visual concepts and placeholder photography, ready to replace with real projects.
+An editorial creative developer/designer portfolio built with React, TypeScript, Vite, Motion for React, and Three.js. The collection showcases four real projects: Jeff’s Concepts, R. K. Njogu & Company Advocates, NetflixPro TV, and NetflixPro Mobile. The Kotlin projects include interactive React home-screen reconstructions with original artwork.
 
 ## Develop
 
@@ -15,13 +15,13 @@ Use the existing checkout. Cloud tasks are already isolated; do not create a Git
 
 ## Content
 
-Edit `src/data/content.ts` for the name, role, biography, email, and visual studies. Set `site.email` to a real address to enable the email link; until then, the contact action clearly explains that details are coming soon. Artwork lives in `src/components/Sculpture.tsx` and `src/components/ProjectArt.tsx`; photography and local fonts live in `public/`.
+Edit `src/data/content.ts` for the name, role, biography, email, and project cases. Set `site.email` to a real address to enable the email link; until then, the contact action clearly explains that details are coming soon. Artwork lives in `src/components/Sculpture.tsx` and `src/components/ProjectArt.tsx`; photography and local fonts live in `public/`.
 
 The full-bleed opening layers kinetic typography with a real, iridescent WebGL sculpture that reacts to pointer movement and scroll. Holding slows its rotation; an explicit pause control is available. Its rendering loop stops offscreen and while the tab is hidden, and a static original SVG takes over if WebGL is unavailable. The 3D code loads separately from the main page.
 
 The owner-supplied portrait appears on a hanging ID badge: a textured fixed-point cord, metal clip, transparent sleeve, and spring-driven drop/bounce. Drag it to bend the rope; release to settle, or press Enter/Space to swing with a keyboard. Update `site.portrait` in the content file to replace the image.
 
-The collection is an interactive contact sheet: hover, focus, or tap a project name to change its printed artwork, then open the concept preview. It replaces the earlier horizontal card gallery.
+The collection is an interactive contact sheet: hover, focus, or tap a project name to change its printed artwork, then open the project case. Website cases link to the sites; the Android cases link to working React UI previews. It replaces the earlier horizontal card gallery.
 
 The about text reveals with scrolling. A spring-smoothed pointer lens uncovers a second, iridescent typographic layer. **Reveal the other side** provides the same content on touch and keyboard, including with reduced motion.
 
@@ -37,7 +37,7 @@ The sections have distinct entrances with clear resting moments. Navigation and 
 npm test
 ```
 
-This builds the **GitHub Pages** version and runs eleven Chromium browser checks against its repository subpath: local assets, contact-sheet selection and dialogs, all three landscape chapters, touch interactions, reduced motion, persistent pause, the portrait lanyard's drag/return, section entrances, WebGL and its fallback, pointer-lens discovery with a keyboard alternative, and particle interactions plus static shape changes. Screenshots are written to ignored `test-results/`.
+This builds the **GitHub Pages** version and runs sixteen Chromium browser checks against its repository subpath: local assets, project selection and dialogs, all three landscape chapters, touch interactions, reduced motion, persistent pause, the portrait lanyard, section entrances, WebGL and its fallback, the pointer lens, the particle room, real project actions, TV keyboard navigation, mobile geometry and list persistence, native filter/utility panels, and preview-route isolation. Screenshots are written to ignored `test-results/`. The original Android apps are not compiled by this browser suite.
 
 The tests use `/usr/bin/chromium` when present, or Playwright's installed Chromium. On another machine, run `npx playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a compatible browser path.
 
@@ -60,6 +60,17 @@ npm run preview:pages -- --port 4173 --strictPort
 
 Open the repository subpath `/mzazimhengaportifolio/` on that local server. For a root-hosted production build, use `npm run build` and `npm run preview` instead.
 
+## Kotlin project previews
+
+The previews are lazy-loaded and use hash routes compatible with GitHub Pages:
+
+- `#/preview/netflix-tv` — 960 × 540 TV design canvas with arrow-key focus, billboard behavior, genre/category rails, search, My List and title details.
+- `#/preview/netflix-mobile` — 412 × 892 phone design canvas with the source-defined hero geometry, poster imagery, glass navigation, categories, search, personal lists and detail panels.
+
+`src/demos/NativeHome.tsx` translates the supplied HomeScreen composables and shared components. `src/demos/catalog.ts` supplies a deterministic local catalog. UI playback, reminders and download panels are explicitly demonstrative; Firebase, billing, Cast discovery, DRM, recommendations and actual video streaming are not ported. No Android secrets or backend credentials are included in the browser code.
+
+The owner’s original Kotlin files depend on runtime data and additional components. The related original components, geometry, typography and artwork were inspected. See [source mapping and visual-equivalence limits](docs/projects/native-source-map.md); exact pixel equivalence to every Android device/runtime configuration is not claimed.
+
 ## Asset sources
 
 - Placeholder mountain photography: [Start Bootstrap Grayscale assets](https://github.com/StartBootstrap/startbootstrap-grayscale/tree/master/dist/assets/img). Used `bg-masthead.jpg` and `demo-image-01.jpg`.
@@ -67,6 +78,8 @@ Open the repository subpath `/mzazimhengaportifolio/` on that local server. For 
 - The two source templates' MIT notices are retained under `docs/licenses/`. No template layouts or application code were reused.
 - Space Grotesk and DM Mono are bundled from [Google Fonts](https://github.com/google/fonts) with their SIL Open Font License notices under `public/fonts/`.
 - The original portrait was supplied and uploaded by the owner; the source JPEG is preserved unchanged.
+- NetflixPro poster, backdrop, logo and game artwork comes from the owner’s original native repositories. Android vector paths were converted to SVG; the profile smile fallbacks are drawn as SVG. Roboto is bundled with its SIL OFL notice.
+- Website previews were captured locally from the owner’s source repositories; the phone and TV preview images are captures of the React reconstructions.
 - Orbital sculptures, WebGL shader deformation, the particle field, and linework are created for this implementation.
 
-There is no contact backend, analytics, external font service, or required secret for running the site. Publication uses the existing GitHub Git authentication.
+The portfolio and its UI previews have no contact backend, analytics, external font service, or required secret. Publication uses the existing GitHub Git authentication.

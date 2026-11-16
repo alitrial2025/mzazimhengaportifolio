@@ -59,7 +59,7 @@ after(async () => {
   server?.kill();
 });
 
-async function pageFor(options = {}) {
+async function pageFor(options = {}, suffix = "") {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     ...options,
@@ -67,7 +67,7 @@ async function pageFor(options = {}) {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto(url);
+  await page.goto(url + suffix);
   await page.evaluate(() => document.fonts.ready);
   return { page, context, errors };
 }
@@ -106,11 +106,11 @@ test("Pages build loads from its repository subpath with local assets", async ()
     }
     assert.equal(
       await page.getByRole("button", { name: /^Preview / }).count(),
-      3,
+      4,
     );
     assert.equal(
       await page.locator(".archive-print-caption strong").innerText(),
-      "Off Script",
+      "Jeff’s Concepts",
     );
     await noOverflow(page);
     await page.screenshot({ path: "test-results/desktop.png" });
@@ -123,28 +123,30 @@ test("Pages build loads from its repository subpath with local assets", async ()
 test("contact sheet changes previews on hover and focus, with keyboard project dialogs", async () => {
   const { page, context, errors } = await pageFor();
   try {
-    const second = page.getByRole("button", { name: "Preview In Good Form" });
+    const second = page.getByRole("button", {
+      name: "Preview R. K. Njogu Advocates",
+    });
     await second.hover();
     assert.equal(await second.getAttribute("aria-pressed"), "true");
     assert.equal(
       await page.locator(".archive-print-caption strong").innerText(),
-      "In Good Form",
+      "R. K. Njogu Advocates",
     );
     const third = page.getByRole("button", {
-      name: "Preview Extra / Ordinary",
+      name: "Preview NetflixPro / TV",
     });
     await third.focus();
     assert.equal(await third.getAttribute("aria-pressed"), "true");
     const project = page.getByRole("button", {
-      name: "Explore Extra / Ordinary, visual concept 03",
+      name: "Explore NetflixPro / TV",
     });
     await project.focus();
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", {
-      name: "Extra / Ordinary — visual concept",
+      name: "NetflixPro / TV — project",
     });
     await dialog.waitFor({ state: "visible" });
-    assert.match(await dialog.innerText(), /REAL PROJECTS ARE COMING SOON/);
+    assert.match(await dialog.innerText(), /native Kotlin app/);
     assert.equal(
       await page.locator("body").evaluate((e) => e.style.overflow),
       "hidden",
@@ -283,11 +285,9 @@ test("mobile menu, contact sheet, touch reveal, accordion and contact preview ar
         "is-horizontal",
       ),
     );
+    await page.getByRole("button", { name: "Explore Jeff’s Concepts" }).click();
     await page
-      .getByRole("button", { name: "Explore Off Script, visual concept 01" })
-      .click();
-    await page
-      .getByRole("dialog", { name: "Off Script — visual concept" })
+      .getByRole("dialog", { name: "Jeff’s Concepts — project" })
       .waitFor({ state: "visible" });
     await page.getByRole("button", { name: "Close preview" }).first().click();
     const capability = page.locator(".capability").nth(1);
@@ -669,5 +669,324 @@ test("particle room responds to pointer and hold, and shape controls work withou
     assert.deepEqual(still.errors, []);
   } finally {
     await still.context.close();
+  }
+});
+
+test("four real projects expose website or React-preview actions with loaded artwork", async () => {
+  const { page, context, errors } = await pageFor({ reducedMotion: "reduce" });
+  try {
+    const entries = [
+      ["Jeff’s Concepts", "https://jeffsconcepts.co.ke/"],
+      [
+        "R. K. Njogu Advocates",
+        "https://alitrial2025.github.io/rk-njogu-advocates/",
+      ],
+      ["NetflixPro / TV", "#/preview/netflix-tv"],
+      ["NetflixPro / Mobile", "#/preview/netflix-mobile"],
+    ];
+    for (const [name, destination] of entries) {
+      await page
+        .getByRole("button", { name: `Preview ${name}`, exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: `Explore ${name}`, exact: true })
+        .click();
+      const dialog = page.getByRole("dialog", {
+        name: `${name} — project`,
+        exact: true,
+      });
+      await dialog.waitFor({ state: "visible" });
+      await dialog
+        .locator(".real-project-art img")
+        .evaluate((image) => image.decode());
+      assert.ok(
+        await dialog
+          .locator(".real-project-art img")
+          .evaluate((image) => image.naturalWidth > 300),
+      );
+      assert.equal(
+        await dialog.locator(".project-primary-action").getAttribute("href"),
+        destination,
+      );
+      assert.ok(
+        await dialog
+          .getByRole("list", { name: "Project technologies" })
+          .isVisible(),
+      );
+      assert.ok(
+        !(await dialog.innerText()).includes("REAL PROJECTS ARE COMING SOON"),
+      );
+      await page.keyboard.press("Escape");
+    }
+    await noOverflow(page);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("TV recreation supports D-pad focus, details, personal list, search and media tabs", async () => {
+  const { page, context, errors } = await pageFor({}, "#/preview/netflix-tv");
+  try {
+    await page.locator(".native-tv").waitFor();
+    const nav = page.getByRole("navigation", { name: "TV navigation" });
+    await nav.getByRole("button", { name: "Home", exact: true }).focus();
+    await page.keyboard.press("ArrowDown");
+    assert.equal(
+      await page.evaluate(() => document.activeElement.textContent.trim()),
+      "Play",
+    );
+    await page.keyboard.press("ArrowRight");
+    assert.equal(
+      await page.evaluate(() => document.activeElement.textContent.trim()),
+      "More Info",
+    );
+    await page.keyboard.press("Enter");
+    const details = page.getByRole("dialog", {
+      name: "Squid Game",
+      exact: true,
+    });
+    await details.waitFor({ state: "visible" });
+    await details
+      .getByRole("button", { name: "Add to My List", exact: true })
+      .click();
+    assert.equal(
+      await details
+        .getByRole("button", { name: "Remove from My List", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page.keyboard.press("Escape");
+    await nav.getByRole("button", { name: "My Netflix", exact: true }).click();
+    assert.match(await page.locator(".native-my-list").innerText(), /My List/);
+    assert.ok(
+      await page
+        .locator(".native-my-list")
+        .getByRole("button", { name: "Details for Squid Game", exact: true })
+        .first()
+        .isVisible(),
+    );
+    await nav.getByRole("button", { name: "Search", exact: true }).click();
+    await page
+      .getByRole("searchbox", { name: "Search catalog" })
+      .fill("Interstellar");
+    assert.equal(
+      await page.locator(".native-search-results button").count(),
+      1,
+    );
+    assert.match(
+      await page.locator(".native-search-results").innerText(),
+      /Interstellar/,
+    );
+    await page
+      .getByRole("searchbox", { name: "Search catalog" })
+      .fill("no-such-film-92831");
+    assert.match(
+      await page.locator(".native-empty").innerText(),
+      /No matching titles/,
+    );
+    await nav.getByRole("button", { name: "Films", exact: true }).click();
+    assert.equal(
+      await nav
+        .getByRole("button", { name: "Films", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await page
+        .locator(
+          '.native-media-strip button[aria-label="Details for Squid Game"]',
+        )
+        .count(),
+      0,
+    );
+    await page.screenshot({ path: "test-results/netflix-tv.png" });
+    await noOverflow(page);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("mobile reconstruction preserves Compose geometry, list persistence and playback UI", async () => {
+  const { page, context, errors } = await pageFor(
+    { viewport: { width: 500, height: 1150 } },
+    "#/preview/netflix-mobile",
+  );
+  try {
+    await page.locator(".native-mobile").waitFor();
+    const geometry = await page.locator(".native-hero").evaluate((e) => ({
+      width: e.offsetWidth,
+      height: e.offsetHeight,
+      radius: getComputedStyle(e).borderRadius,
+    }));
+    assert.equal(geometry.width, 360);
+    assert.ok(Math.abs(geometry.height - 540) <= 1);
+    assert.equal(geometry.radius, "12px");
+    const save = page
+      .locator(".native-hero")
+      .getByRole("button", { name: "My List", exact: true });
+    await save.click();
+    assert.equal(await save.getAttribute("aria-pressed"), "true");
+    await page.reload();
+    await page.locator(".native-mobile").waitFor();
+    assert.equal(
+      await page
+        .locator(".native-hero")
+        .getByRole("button", { name: "My List", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page
+      .getByRole("navigation", { name: "Mobile navigation" })
+      .getByRole("button", { name: "My Netflix", exact: true })
+      .click();
+    const savedTitle = page
+      .locator(".native-my-list")
+      .getByRole("button", { name: "Details for Squid Game", exact: true })
+      .first();
+    await savedTitle.click();
+    const detail = page.getByRole("dialog", {
+      name: "Squid Game",
+      exact: true,
+    });
+    await detail.getByRole("button", { name: "Play", exact: true }).click();
+    assert.match(
+      await page.locator(".native-player-notice").innerText(),
+      /No video stream/,
+    );
+    await page
+      .getByRole("button", { name: "Pause preview", exact: true })
+      .click();
+    assert.ok(
+      await page
+        .getByRole("button", { name: "Resume preview", exact: true })
+        .isVisible(),
+    );
+    await page
+      .getByRole("slider", { name: "Preview playback position" })
+      .focus();
+    await page.keyboard.press("End");
+    assert.match(
+      await page.locator(".native-player-controls").innerText(),
+      /2:00/,
+    );
+    await page.keyboard.press("Escape");
+    await page.screenshot({ path: "test-results/netflix-mobile.png" });
+    await noOverflow(page);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("mobile filters, categories, reminder and browser utility panels are functional", async () => {
+  const { page, context, errors } = await pageFor(
+    { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+    "#/preview/netflix-mobile",
+  );
+  try {
+    await page.locator(".native-mobile").waitFor();
+    await page
+      .getByRole("navigation", { name: "Filter titles" })
+      .getByRole("button", { name: "Films", exact: true })
+      .click();
+    assert.equal(
+      await page.locator(".native-hero").getAttribute("aria-label"),
+      "Featured: Inception",
+    );
+    await page
+      .getByRole("button", { name: "Choose category", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Romance", exact: true })
+      .click();
+    assert.match(
+      await page.locator(".native-empty").innerText(),
+      /No matching titles/,
+    );
+    await page
+      .getByRole("button", { name: "Clear filter", exact: true })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Filter titles" })
+      .getByRole("button", { name: "New & Hot", exact: true })
+      .click();
+    const panel = page.getByRole("dialog");
+    await panel
+      .getByRole("button", { name: "Remind me", exact: true })
+      .first()
+      .click();
+    assert.ok(
+      await panel
+        .getByRole("button", { name: "Reminder set", exact: true })
+        .isVisible(),
+    );
+    await page
+      .getByRole("button", { name: "Close app panel", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Cast", exact: true }).click();
+    assert.match(await page.getByRole("dialog").innerText(), /No cast device/);
+    await page
+      .getByRole("button", { name: "Keep watching here", exact: true })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Mobile navigation" })
+      .getByRole("button", { name: "Search", exact: true })
+      .click();
+    await page
+      .getByRole("searchbox", { name: "Search catalog" })
+      .fill("Matrix");
+    assert.equal(
+      await page.locator(".native-search-results button").count(),
+      1,
+    );
+    await noOverflow(page);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("preview hash routes switch platforms and return to the real portfolio without CSS leakage", async () => {
+  const { page, context, errors } = await pageFor(
+    { reducedMotion: "reduce" },
+    "#/preview/netflix-tv",
+  );
+  try {
+    await page.locator(".native-tv").waitFor();
+    await page
+      .getByRole("navigation", { name: "Preview platform" })
+      .getByRole("link", { name: "Mobile", exact: true })
+      .click();
+    await page.locator(".native-mobile").waitFor();
+    assert.match(page.url(), /#\/preview\/netflix-mobile$/);
+    await page
+      .getByRole("link", { name: "Back to portfolio", exact: true })
+      .click();
+    await page.locator(".portfolio").waitFor();
+    assert.equal(
+      await page.getByRole("button", { name: /^Preview / }).count(),
+      4,
+    );
+    assert.match(
+      await page.locator(".archive-index h2").innerText(),
+      /Selected/,
+    );
+    assert.match(
+      await page
+        .locator(".archive-index h2")
+        .evaluate((e) => getComputedStyle(e).fontFamily),
+      /Space Grotesk/,
+    );
+    assert.notEqual(
+      await page.locator("body").evaluate((e) => e.style.overflow),
+      "hidden",
+    );
+    await noOverflow(page);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
   }
 });
