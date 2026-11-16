@@ -199,6 +199,7 @@ export default function PerspectiveStory({
   const ref = useRef<HTMLElement>(null);
   const paused = useMotionPaused();
   const [chapter, setChapter] = useState(0);
+  const previousChapter = useRef(0);
   const { scrollYProgress: progress } = useScroll({
     target: ref,
     offset: ["start start", "end end"],
@@ -207,7 +208,10 @@ export default function PerspectiveStory({
   const rotate = useTransform(progress, [0, 0.1, 1], [-4, 0, 0]);
   useMotionValueEvent(progress, "change", (value) => {
     const next = value < 0.225 ? 0 : value < 0.475 ? 1 : value < 0.725 ? 2 : 3;
-    setChapter((current) => (current === next ? current : next));
+    if (next !== previousChapter.current) {
+      previousChapter.current = next;
+      setChapter(next);
+    }
   });
   const goTo = (index: number) => {
     const section = ref.current;

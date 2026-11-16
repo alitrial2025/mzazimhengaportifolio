@@ -1,0 +1,69 @@
+{
+  "method": "Single local browser comparison; Chromium software WebGL, 1280x800, CDP main-thread CPU throttle 4x, advertised two cores/two GB. Each phase samples requestAnimationFrame responsiveness for 4.5 seconds. CDP throttling does not throttle worker execution. These are page responsiveness measurements, not WebGL render FPS or a universal device guarantee. Cold shader startup is included, so these short samples do not measure steady-state rendering; software GPU composition can still stall during startup.",
+  "quality": "Original shader, 220x40 geometry, antialiasing, 1.6 WebGL DPR cap, original requestAnimationFrame cadence, 1100 desktop / 650 mobile particles, and 1.5 particle DPR cap are retained. No automatic visual downgrade.",
+  "before": {
+    "hero": {
+      "frames": 16,
+      "fps": 3.4,
+      "p95FrameMs": 517,
+      "longTasks": 14,
+      "longTaskMs": 4463,
+      "effects": "original",
+      "particles": 1100,
+      "webgl": true
+    },
+    "story": {
+      "frames": 194,
+      "fps": 43,
+      "p95FrameMs": 50,
+      "longTasks": 7,
+      "longTaskMs": 823,
+      "effects": "original",
+      "particles": 1100,
+      "webgl": true
+    },
+    "particles": {
+      "frames": 174,
+      "fps": 38.4,
+      "p95FrameMs": 33,
+      "longTasks": 2,
+      "longTaskMs": 140,
+      "effects": "original",
+      "particles": 1100,
+      "webgl": true
+    }
+  },
+  "after": {
+    "hero": {
+      "frames": 18,
+      "fps": 4,
+      "p95FrameMs": 3356,
+      "longTasks": 3,
+      "longTaskMs": 497,
+      "effects": "original",
+      "particles": "1100",
+      "webgl": true
+    },
+    "story": {
+      "frames": 203,
+      "fps": 45,
+      "p95FrameMs": 50,
+      "longTasks": 9,
+      "longTaskMs": 752,
+      "effects": "original",
+      "particles": "1100",
+      "webgl": true
+    },
+    "particles": {
+      "frames": 248,
+      "fps": 55,
+      "p95FrameMs": 33,
+      "longTasks": 1,
+      "longTaskMs": 137,
+      "effects": "original",
+      "particles": "1100",
+      "webgl": true
+    }
+  },
+  "presentation": "Full-resolution ImageBitmap frames from the worker are retained by a bitmap presentation canvas. No quality tiers or animation caps are used."
+}

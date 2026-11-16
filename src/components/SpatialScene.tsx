@@ -1,20 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { MotionValue } from "motion/react";
-import {
-  ACESFilmicToneMapping,
-  AmbientLight,
-  Color,
-  DirectionalLight,
-  Mesh,
-  MeshPhysicalMaterial,
-  PerspectiveCamera,
-  PMREMGenerator,
-  Scene,
-  TorusKnotGeometry,
-  Vector2,
-  WebGLRenderer,
-} from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import type { SculptureEngine } from "./SculptureEngine";
 import { Sculpture } from "./Sculpture";
 
 type Props = {
@@ -22,160 +8,156 @@ type Props = {
   paused: boolean;
   frozen: boolean;
 };
-
 export default function SpatialScene({ progress, paused, frozen }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const controls = useRef({ paused, frozen });
-  const refresh = useRef<() => void>(() => {});
+  const send = useRef<(message: Record<string, unknown>) => void>(() => {});
   const [state, setState] = useState("loading");
-
+  const [thread, setThread] = useState("starting");
   useEffect(() => {
     controls.current = { paused, frozen };
-    refresh.current();
+    send.current({ type: "controls", controls: controls.current });
   }, [paused, frozen]);
-
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    let renderer: WebGLRenderer;
-    try {
-      renderer = new WebGLRenderer({
-        alpha: true,
-        antialias: true,
-        powerPreference: "low-power",
-      });
-    } catch {
-      setState("fallback");
-      return;
-    }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
-    renderer.setClearColor(0x000000, 0);
-    renderer.toneMapping = ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    element.appendChild(renderer.domElement);
-
-    const scene = new Scene();
-    const camera = new PerspectiveCamera(36, 1, 0.1, 60);
-    camera.position.set(0, 0, 9.6);
-    const pmrem = new PMREMGenerator(renderer);
-    const room = new RoomEnvironment();
-    const environment = pmrem.fromScene(room, 0.04);
-    scene.environment = environment.texture;
-    room.dispose();
-    pmrem.dispose();
-
-    const geometry = new TorusKnotGeometry(1.4, 0.49, 220, 40, 2, 3);
-    const material = new MeshPhysicalMaterial({
-      color: new Color("#dadfd0"),
-      metalness: 1,
-      roughness: 0.14,
-      clearcoat: 1,
-      clearcoatRoughness: 0.08,
-      iridescence: 1,
-      iridescenceIOR: 1.6,
-      iridescenceThicknessRange: [180, 520],
-      envMapIntensity: 1.7,
-    });
-    const time = { value: 0 };
-    const scroll = { value: progress.get() };
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.uSculptureTime = time;
-      shader.uniforms.uSculptureScroll = scroll;
-      shader.vertexShader = `uniform float uSculptureTime; uniform float uSculptureScroll;\n${shader.vertexShader}`;
-      shader.vertexShader = shader.vertexShader.replace(
-        "#include <begin_vertex>",
-        `
-        vec3 transformed = vec3(position);
-        transformed += normal * sin(position.y * 2.5 + uSculptureTime * .5) * .055;
-        float twist = uSculptureScroll * .7 + sin(position.y * .5 + uSculptureTime * .15) * .11;
-        transformed.xz = mat2(cos(twist), -sin(twist), sin(twist), cos(twist)) * transformed.xz;
-      `,
-      );
-    };
-    const sculpture = new Mesh(geometry, material);
-    sculpture.rotation.set(0.35, -0.5, -0.35);
-    scene.add(sculpture, new AmbientLight(0xffffff, 0.5));
-    const key = new DirectionalLight(0xe3ffa0, 5);
-    key.position.set(-3, 4, 5);
-    const rim = new DirectionalLight(0xa395ff, 7);
-    rim.position.set(4, -1, 2);
-    const warm = new DirectionalLight(0xff6239, 3);
-    warm.position.set(-4, -3, 1);
-    scene.add(key, rim, warm);
-
-    const pointer = new Vector2();
-    const smoothPointer = new Vector2();
-    let visible = true;
-    let alive = true;
-    let held = false;
-    let frame = 0;
-    let previous = performance.now();
-    let elapsed = 0;
-    let baseScale = 1;
-    const render = (now: number) => {
-      frame = 0;
-      if (!alive) return;
-      const delta = Math.min((now - previous) / 1000, 0.05);
-      previous = now;
-      const stopped = controls.current.paused || controls.current.frozen;
-      if (!stopped) elapsed += delta * (held ? 0.08 : 1);
-      const p = controls.current.paused ? 0 : progress.get();
-      time.value = elapsed;
-      scroll.value = p;
-      smoothPointer.lerp(
-        controls.current.paused ? new Vector2() : pointer,
-        0.06,
-      );
-      sculpture.rotation.set(
-        0.35 + smoothPointer.y * 0.3 + p * 0.9,
-        -0.5 + elapsed * 0.13 + smoothPointer.x * 0.5 + p * 2.2,
-        -0.35 + p * 0.6,
-      );
-      sculpture.scale.setScalar(baseScale * (1 + p * 0.6));
-      sculpture.position.y = -p * 0.4;
-      renderer.render(scene, camera);
-      if (
-        visible &&
-        !document.hidden &&
-        !controls.current.paused &&
-        !controls.current.frozen
-      )
-        frame = requestAnimationFrame(render);
-    };
-    const requestFrame = () => {
-      if (!frame && alive && visible && !document.hidden) {
-        previous = performance.now();
-        frame = requestAnimationFrame(render);
+    let alive = true,
+      worker: Worker | undefined,
+      engine: SculptureEngine | undefined;
+    let bounds = element.getBoundingClientRect(),
+      inView = true,
+      usingMain = false;
+    let canvas = document.createElement("canvas");
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.width = Math.round(bounds.width * Math.min(devicePixelRatio, 1.6));
+    canvas.height = Math.round(bounds.height * Math.min(devicePixelRatio, 1.6));
+    element.appendChild(canvas);
+    const visible = () => inView && !document.hidden;
+    const main = async () => {
+      if (!alive || usingMain) return;
+      usingMain = true;
+      setState("loading");
+      worker?.terminate();
+      worker = undefined;
+      // Replace the presentation canvas before creating a WebGL context
+      // for browsers that cannot render or present worker frames.
+      canvas.remove();
+      canvas = document.createElement("canvas");
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      element.appendChild(canvas);
+      try {
+        const { createSculptureEngine } = await import("./SculptureEngine");
+        if (!alive) return;
+        engine = createSculptureEngine(
+          canvas,
+          () => setState("fallback"),
+          () => {
+            if (alive) {
+              setThread("main");
+              setState("ready");
+            }
+          },
+        );
+        engine.setControls(controls.current);
+        engine.setProgress(progress.get());
+        engine.resize(bounds.width, bounds.height, devicePixelRatio);
+        engine.setVisible(visible());
+        send.current = (data) => {
+          switch (data.type) {
+            case "controls":
+              engine?.setControls(controls.current);
+              break;
+            case "progress":
+              engine?.setProgress(Number(data.value));
+              break;
+            case "pointer":
+              engine?.setPointer(Number(data.x), Number(data.y));
+              break;
+            case "held":
+              engine?.setHeld(Boolean(data.value));
+              break;
+            case "visible":
+              engine?.setVisible(Boolean(data.value));
+              break;
+            case "resize":
+              engine?.resize(bounds.width, bounds.height, devicePixelRatio);
+              break;
+          }
+        };
+      } catch {
+        if (alive) setState("fallback");
       }
     };
-    refresh.current = requestFrame;
+    if (
+      typeof Worker !== "undefined" &&
+      typeof canvas.transferControlToOffscreen === "function"
+    ) {
+      try {
+        worker = new Worker(new URL("./sculpture.worker.ts", import.meta.url), {
+          type: "module",
+        });
+        const presentation = canvas.getContext("bitmaprenderer");
+        if (!presentation)
+          throw new Error("Bitmap presentation is unavailable");
+        let firstFrame = true;
+        worker.onmessage = (event) => {
+          if (!alive || usingMain) {
+            event.data.bitmap?.close();
+            return;
+          }
+          if (event.data.type === "frame") {
+            const bitmap = event.data.bitmap as ImageBitmap;
+            if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
+            if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
+            presentation.transferFromImageBitmap(bitmap);
+            if (firstFrame) {
+              firstFrame = false;
+              setThread("worker");
+              setState("ready");
+              worker?.postMessage({ type: "visible", value: visible() });
+            }
+          } else if (event.data.type === "fallback") void main();
+        };
+        worker.onerror = (event) => {
+          event.preventDefault();
+          void main();
+        };
+        send.current = (data) => worker?.postMessage(data);
+        worker.postMessage({
+          type: "init",
+          controls: controls.current,
+          progress: progress.get(),
+          width: bounds.width,
+          height: bounds.height,
+          ratio: devicePixelRatio,
+        });
+      } catch {
+        void main();
+      }
+    } else void main();
     const resize = () => {
-      const { width, height } = element.getBoundingClientRect();
-      if (!width || !height) return;
-      renderer.setSize(width, height);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      baseScale = width < 650 ? 0.58 : 0.98;
-      sculpture.position.x = width < 650 ? 0 : 0.65;
-      requestFrame();
+      bounds = element.getBoundingClientRect();
+      send.current({
+        type: "resize",
+        width: bounds.width,
+        height: bounds.height,
+        ratio: devicePixelRatio,
+      });
     };
-    const onPointer = (event: PointerEvent) => {
-      const rect = element.getBoundingClientRect();
-      pointer.set(
-        ((event.clientX - rect.left) / rect.width - 0.5) * 2,
-        ((event.clientY - rect.top) / rect.height - 0.5) * 2,
-      );
-    };
+    const onPointer = (event: PointerEvent) =>
+      send.current({
+        type: "pointer",
+        x: ((event.clientX - bounds.left) / bounds.width - 0.5) * 2,
+        y: ((event.clientY - bounds.top) / bounds.height - 0.5) * 2,
+      });
     const onLeave = () => {
-      pointer.set(0, 0);
-      held = false;
+      send.current({ type: "pointer", x: 0, y: 0 });
+      send.current({ type: "held", value: false });
     };
-    const onDown = () => {
-      held = true;
-    };
-    const onUp = () => {
-      held = false;
-    };
+    const onDown = () => send.current({ type: "held", value: true });
+    const onUp = () => send.current({ type: "held", value: false });
     const surface = element.closest(".hero-stage") ?? element;
     surface.addEventListener("pointermove", onPointer as EventListener, {
       passive: true,
@@ -185,57 +167,40 @@ export default function SpatialScene({ progress, paused, frozen }: Props) {
     window.addEventListener("pointerup", onUp);
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(element);
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
-      if (!visible) {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      } else requestFrame();
+    const intersection = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      send.current({ type: "visible", value: visible() });
     });
-    intersectionObserver.observe(element);
-    const onVisibility = () => {
-      if (document.hidden) {
-        cancelAnimationFrame(frame);
-        frame = 0;
-      } else requestFrame();
-    };
+    intersection.observe(element);
+    const onVisibility = () =>
+      send.current({ type: "visible", value: visible() });
     document.addEventListener("visibilitychange", onVisibility);
-    const unsubscribe = progress.on("change", () => {
-      if (!controls.current.paused) requestFrame();
-    });
-    const lostContext = (event: Event) => {
-      event.preventDefault();
-      cancelAnimationFrame(frame);
-      frame = 0;
-      alive = false;
-      setState("fallback");
-    };
-    renderer.domElement.addEventListener("webglcontextlost", lostContext);
-    resize();
-    setState("ready");
+    const unsubscribe = progress.on("change", (value) =>
+      send.current({ type: "progress", value }),
+    );
     return () => {
       alive = false;
-      cancelAnimationFrame(frame);
-      refresh.current = () => {};
       unsubscribe();
       resizeObserver.disconnect();
-      intersectionObserver.disconnect();
-      document.removeEventListener("visibilitychange", onVisibility);
+      intersection.disconnect();
       surface.removeEventListener("pointermove", onPointer as EventListener);
       surface.removeEventListener("pointerleave", onLeave);
       surface.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointerup", onUp);
-      renderer.domElement.removeEventListener("webglcontextlost", lostContext);
-      geometry.dispose();
-      material.dispose();
-      environment.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
+      document.removeEventListener("visibilitychange", onVisibility);
+      send.current = () => {};
+      worker?.terminate();
+      engine?.dispose();
+      canvas.remove();
     };
   }, [progress]);
-
   return (
-    <div className="spatial-scene" data-scene-state={state} aria-hidden="true">
+    <div
+      className="spatial-scene"
+      data-scene-state={state}
+      data-render-thread={thread}
+      aria-hidden="true"
+    >
       <div className="scene-canvas" ref={host} />
       <div className="spatial-fallback">
         <Sculpture variant="silver" />

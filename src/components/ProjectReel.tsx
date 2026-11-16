@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   motion,
   useTransform,
@@ -66,7 +66,14 @@ export default function ProjectReel({
 }) {
   const paused = useMotionPaused();
   const [visible, setVisible] = useState(false);
-  useMotionValueEvent(progress, "change", (value) => setVisible(value > 0.2));
+  const wasVisible = useRef(false);
+  useMotionValueEvent(progress, "change", (value) => {
+    const next = value > 0.2;
+    if (next !== wasVisible.current) {
+      wasVisible.current = next;
+      setVisible(next);
+    }
+  });
   const opacity = useTransform(progress, [0, 0.12, 0.32, 1], [0, 0, 1, 1]);
   const pointerEvents = useTransform(progress, (value) =>
     value > 0.2 ? "auto" : "none",

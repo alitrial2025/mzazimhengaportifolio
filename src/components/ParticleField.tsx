@@ -19,53 +19,72 @@ export default function ParticleField({ mode, paused, pulse }: Props) {
     const canvas = ref.current!;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const count = window.innerWidth < 650 ? 650 : 1100;
+    const mobile = window.innerWidth < 650;
+    const count = mobile ? 650 : 1100;
     const positions = new Float32Array(count * 3);
     const offsets = new Float32Array(count * 2);
+    const orbit = new Float64Array(count * 4);
+    const scatter = new Float64Array(count * 3);
+    const wave = new Float64Array(count * 2);
+    const px = new Float64Array(count),
+      py = new Float64Array(count);
+    const radii = new Float64Array(count),
+      depths = new Float64Array(count);
+    const depthOrder = Uint16Array.from({ length: count }, (_, index) => index);
+    const side = Math.ceil(Math.sqrt(count));
+    for (let i = 0; i < count; i++) {
+      const angle = i * 2.399963;
+      const phi = Math.acos(1 - (2 * (i + 0.5)) / count);
+      orbit.set(
+        [
+          Math.cos(angle) * Math.sin(phi),
+          Math.cos(phi),
+          Math.sin(angle) * Math.sin(phi),
+          phi * 5,
+        ],
+        i * 4,
+      );
+      scatter.set(
+        [
+          (noise(i + 1) - 0.5) * 620,
+          (noise(i + 32) - 0.5) * 410,
+          (noise(i + 191) - 0.5) * 390,
+        ],
+        i * 3,
+      );
+      wave.set(
+        [
+          ((i % side) / (side - 1) - 0.5) * 530,
+          (Math.floor(i / side) / (side - 1) - 0.5) * 410,
+        ],
+        i * 2,
+      );
+      positions.set(
+        [orbit[i * 4] * 205, orbit[i * 4 + 1] * 205, orbit[i * 4 + 2] * 205],
+        i * 3,
+      );
+    }
+    canvas.dataset.particleCount = String(count);
     let width = 1,
       height = 1,
       visible = false,
       frame = 0,
-      clock = 0,
-      previous = performance.now();
+      clock = 0;
+    let previous = performance.now(),
+      alive = true,
+      initialized = false;
     let held = false,
       pointerActive = false,
       pointerX = 0,
-      pointerY = 0,
-      lastPulse = pulse,
+      pointerY = 0;
+    let lastPulse = controls.current.pulse,
       burst = 0;
-    let alive = true;
-    const point = (i: number, kind: FieldMode, time: number) => {
-      if (kind === "Wave") {
-        const side = Math.ceil(Math.sqrt(count));
-        const x = ((i % side) / (side - 1) - 0.5) * 530;
-        const z = (Math.floor(i / side) / (side - 1) - 0.5) * 410;
-        return [
-          x,
-          Math.sin(x * 0.013 + time * 0.5) * 58 +
-            Math.cos(z * 0.017 + time * 0.3) * 28,
-          z,
-        ];
-      }
-      if (kind === "Scatter")
-        return [
-          (noise(i + 1) - 0.5) * 620,
-          (noise(i + 32) - 0.5) * 410,
-          (noise(i + 191) - 0.5) * 390,
-        ];
-      const angle = i * 2.399963;
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / count);
-      const r = 205 + Math.sin(phi * 5 + time * 0.3) * 18;
-      return [
-        Math.cos(angle) * Math.sin(phi) * r,
-        Math.cos(phi) * r,
-        Math.sin(angle) * Math.sin(phi) * r,
-      ];
+    const mark = (key: string, value: string) => {
+      if (canvas.dataset[key] !== value) canvas.dataset[key] = value;
     };
-    for (let i = 0; i < count; i++) positions.set(point(i, mode, 0), i * 3);
     const draw = (now: number) => {
       frame = 0;
-      if (!alive) return;
+      if (!alive || !visible || document.hidden) return;
       const state = controls.current;
       const dt = Math.min((now - previous) / 1000, 0.05);
       previous = now;
@@ -74,95 +93,108 @@ export default function ParticleField({ mode, paused, pulse }: Props) {
         lastPulse = state.pulse;
         burst = 1;
       }
-      if (state.paused) burst = 0;
-      else burst *= Math.exp(-dt * 2.5);
-      ctx.clearRect(0, 0, width, height);
+      burst = state.paused ? 0 : burst * Math.exp(-dt * 2.5);
+      const blend = state.paused || !initialized ? 1 : 1 - Math.exp(-dt * 3.5);
+      const offsetBlend = 0.12;
       const angle = state.paused ? 0.25 : clock * 0.075;
       const cos = Math.cos(angle),
         sin = Math.sin(angle);
       const scale = Math.min(width / 740, height / 570, 1.3);
       const centerX = width * 0.5,
         centerY = height * 0.5;
-      const projected: {
-        x: number;
-        y: number;
-        z: number;
-        radius: number;
-        index: number;
-      }[] = [];
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, width, height);
       for (let i = 0; i < count; i++) {
-        const target = point(i, state.mode, clock);
-        const blend = state.paused ? 1 : 1 - Math.exp(-dt * 3.5);
-        for (let a = 0; a < 3; a++)
-          positions[i * 3 + a] += (target[a] - positions[i * 3 + a]) * blend;
-        const x = positions[i * 3],
-          y = positions[i * 3 + 1],
-          z = positions[i * 3 + 2];
+        const a = i * 3,
+          b = i * 2,
+          c = i * 4;
+        let tx: number, ty: number, tz: number;
+        if (state.mode === "Wave") {
+          tx = wave[b];
+          tz = wave[b + 1];
+          ty =
+            Math.sin(tx * 0.013 + clock * 0.5) * 58 +
+            Math.cos(tz * 0.017 + clock * 0.3) * 28;
+        } else if (state.mode === "Scatter") {
+          tx = scatter[a];
+          ty = scatter[a + 1];
+          tz = scatter[a + 2];
+        } else {
+          const r = 205 + Math.sin(orbit[c + 3] + clock * 0.3) * 18;
+          tx = orbit[c] * r;
+          ty = orbit[c + 1] * r;
+          tz = orbit[c + 2] * r;
+        }
+        positions[a] += (tx - positions[a]) * blend;
+        positions[a + 1] += (ty - positions[a + 1]) * blend;
+        positions[a + 2] += (tz - positions[a + 2]) * blend;
+        const x = positions[a],
+          y = positions[a + 1],
+          z = positions[a + 2];
         const rx = x * cos - z * sin,
           rz = x * sin + z * cos;
         const ry = y * 0.9 - rz * 0.28,
           depth = y * 0.28 + rz * 0.9;
         const perspective = 650 / (650 + depth);
-        let px = centerX + rx * scale * perspective,
-          py = centerY + ry * scale * perspective;
+        let sx = centerX + rx * scale * perspective,
+          sy = centerY + ry * scale * perspective;
         let ox = 0,
           oy = 0;
         if (pointerActive && !state.paused) {
-          const dx = px - pointerX,
-            dy = py - pointerY;
-          const distance = Math.max(1, Math.hypot(dx, dy));
-          const force = Math.exp(
-            (-distance * distance) / (held ? 110000 : 26000),
-          );
-          ox = held ? -dx * force * 0.78 : (dx / distance) * force * 70;
-          oy = held ? -dy * force * 0.78 : (dy / distance) * force * 70;
+          const dx = sx - pointerX,
+            dy = sy - pointerY;
+          const distance2 = dx * dx + dy * dy;
+          const force = Math.exp(-distance2 / (held ? 110000 : 26000));
+          const inverse = 1 / Math.max(1, Math.sqrt(distance2));
+          ox = held ? -dx * force * 0.78 : dx * inverse * force * 70;
+          oy = held ? -dy * force * 0.78 : dy * inverse * force * 70;
         }
-        offsets[i * 2] += (ox - offsets[i * 2]) * 0.12;
-        offsets[i * 2 + 1] += (oy - offsets[i * 2 + 1]) * 0.12;
-        if (state.paused) {
-          offsets[i * 2] = 0;
-          offsets[i * 2 + 1] = 0;
-        }
-        px += offsets[i * 2] + (px - centerX) * burst * 0.7;
-        py += offsets[i * 2 + 1] + (py - centerY) * burst * 0.7;
-        projected.push({
-          x: px,
-          y: py,
-          z: depth,
-          radius: Math.max(0.6, 1.3 * perspective * scale),
-          index: i,
-        });
+        offsets[b] = state.paused
+          ? 0
+          : offsets[b] + (ox - offsets[b]) * offsetBlend;
+        offsets[b + 1] = state.paused
+          ? 0
+          : offsets[b + 1] + (oy - offsets[b + 1]) * offsetBlend;
+        sx += offsets[b] + (sx - centerX) * burst * 0.7;
+        sy += offsets[b + 1] + (sy - centerY) * burst * 0.7;
+        px[i] = sx;
+        py[i] = sy;
+        radii[i] =
+          Math.max(0.6, 1.3 * perspective * scale) * (i % 17 === 0 ? 1.7 : 1);
+        depths[i] = depth;
       }
-      // Fine connections describe the surface without a solid mesh.
+      initialized = true;
       ctx.lineWidth = 0.5;
       ctx.strokeStyle = "#423c7124";
       ctx.beginPath();
-      for (let i = 0; i < projected.length - 13; i += 4) {
-        const a = projected[i],
-          b = projected[i + 13];
-        if (Math.hypot(a.x - b.x, a.y - b.y) < 70 * scale) {
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
+      for (let i = 0; i < count - 13; i += 4) {
+        const j = i + 13,
+          dx = px[i] - px[j],
+          dy = py[i] - py[j];
+        if (dx * dx + dy * dy < 4900 * scale * scale) {
+          ctx.moveTo(px[i], py[i]);
+          ctx.lineTo(px[j], py[j]);
         }
       }
       ctx.stroke();
-      projected.sort((a, b) => b.z - a.z);
-      for (const p of projected) {
-        const alpha = Math.max(0.16, Math.min(0.9, 0.5 - p.z / 650));
-        ctx.fillStyle =
-          p.index % 17 === 0
-            ? `rgba(230,74,39,${alpha + 0.1})`
-            : `rgba(41,36,65,${alpha})`;
+      // Preserve exact depth order, particle size and transparency. Reuse
+      // typed buffers and avoid allocating/sorting a new object per particle.
+      depthOrder.sort((a, b) => depths[b] - depths[a]);
+      let lastAccent = -1;
+      for (const i of depthOrder) {
+        const accent = Number(i % 17 === 0);
+        if (accent !== lastAccent) {
+          ctx.fillStyle = accent ? "#e64a27" : "#292441";
+          lastAccent = accent;
+        }
+        ctx.globalAlpha =
+          Math.max(0.16, Math.min(0.9, 0.5 - depths[i] / 650)) +
+          (accent ? 0.1 : 0);
         ctx.beginPath();
-        ctx.arc(
-          p.x,
-          p.y,
-          p.radius * (p.index % 17 === 0 ? 1.7 : 1),
-          0,
-          Math.PI * 2,
-        );
+        ctx.arc(px[i], py[i], radii[i], 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
       if (pointerActive && !state.paused) {
         ctx.strokeStyle = held ? "#e64a2788" : "#423c7144";
         ctx.lineWidth = 0.6;
@@ -174,18 +206,12 @@ export default function ParticleField({ mode, paused, pulse }: Props) {
         ctx.arc(pointerX, pointerY, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
-      canvas.dataset.interaction = held
-        ? "gathering"
-        : pointerActive
-          ? "repelling"
-          : "idle";
-      canvas.dataset.fieldState = state.paused
-        ? "still"
-        : visible
-          ? "active"
-          : "resting";
-      if (visible && !document.hidden && !state.paused)
-        frame = requestAnimationFrame(draw);
+      mark(
+        "interaction",
+        held ? "gathering" : pointerActive ? "repelling" : "idle",
+      );
+      mark("fieldState", state.paused ? "still" : "active");
+      if (!state.paused) frame = requestAnimationFrame(draw);
     };
     const request = () => {
       if (alive && !frame && visible && !document.hidden) {
@@ -198,6 +224,7 @@ export default function ParticleField({ mode, paused, pulse }: Props) {
       const rect = canvas.getBoundingClientRect();
       width = rect.width;
       height = rect.height;
+      if (!width || !height) return;
       const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
@@ -212,19 +239,16 @@ export default function ParticleField({ mode, paused, pulse }: Props) {
       else {
         cancelAnimationFrame(frame);
         frame = 0;
-        canvas.dataset.interaction = held
-          ? "gathering"
-          : pointerActive
-            ? "repelling"
-            : "idle";
-        canvas.dataset.fieldState = "resting";
+        held = false;
+        pointerActive = false;
+        mark("interaction", "idle");
+        mark("fieldState", "resting");
       }
     });
     intersection.observe(canvas);
     const move = (event: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      pointerX = event.clientX - rect.left;
-      pointerY = event.clientY - rect.top;
+      pointerX = event.offsetX;
+      pointerY = event.offsetY;
       pointerActive = true;
     };
     const leave = () => {

@@ -546,6 +546,21 @@ test("3D hero renders and stays usable when WebGL is unavailable", async () => {
       .locator('.spatial-scene[data-scene-state="ready"]')
       .waitFor({ timeout: 20000 });
     assert.equal(await page.locator(".scene-canvas canvas").count(), 1);
+    const painted = await page
+      .locator(".scene-canvas canvas")
+      .evaluate(async (canvas) => {
+        const bitmap = await createImageBitmap(canvas);
+        const sample = document.createElement("canvas");
+        sample.width = sample.height = 32;
+        const context = sample.getContext("2d");
+        context.drawImage(bitmap, 0, 0, 32, 32);
+        bitmap.close();
+        const pixels = context.getImageData(0, 0, 32, 32).data;
+        let visible = 0;
+        for (let i = 3; i < pixels.length; i += 4) if (pixels[i] > 0) visible++;
+        return visible;
+      });
+    assert.ok(painted > 50, "The ready hero has no visible sculpture frame");
     await page
       .getByRole("button", { name: "PAUSE SCULPTURE", exact: true })
       .click();
@@ -567,6 +582,7 @@ test("3D hero renders and stays usable when WebGL is unavailable", async () => {
   });
   try {
     await fallback.addInitScript(() => {
+      HTMLCanvasElement.prototype.transferControlToOffscreen = undefined;
       const original = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function (type, ...args) {
         if (
@@ -1065,7 +1081,9 @@ test("hero shows the real work immediately and unfolds into an accessible projec
         behavior: "instant",
       }),
     );
-    await page.waitForTimeout(400);
+    await page.waitForFunction(
+      () => !document.querySelector(".hero-project-reel").inert,
+    );
     assert.equal(
       await page.locator(".hero-project-reel").evaluate((e) => e.inert),
       false,
@@ -1184,5 +1202,144 @@ test("projects connect the about section, interactive desk and final index on to
     } finally {
       await context.close();
     }
+  }
+});
+
+test("section links use native smooth scrolling and project dialogs keep the layout steady", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    await page.evaluate(() => {
+      window.__instantScrolls = [];
+      const original = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = function (options) {
+        if (options?.behavior === "instant")
+          window.__instantScrolls.push(this.id);
+        return original.call(this, options);
+      };
+    });
+    await page
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "Work" })
+      .click();
+    await page.waitForFunction(
+      () =>
+        Math.abs(scrollY - document.querySelector("#work").offsetTop + 24) < 35,
+    );
+    assert.deepEqual(
+      await page.evaluate(() => window.__instantScrolls),
+      [],
+      "Section navigation overrides smooth scrolling",
+    );
+    const before = await page.locator(".archive-index").boundingBox();
+    await page
+      .getByRole("button", { name: "Explore Jeff’s Concepts", exact: true })
+      .click();
+    const during = await page.locator(".archive-index").boundingBox();
+    assert.ok(
+      Math.abs(before.x - during.x) < 0.5 &&
+        Math.abs(before.width - during.width) < 0.5,
+      "Opening a project shifts the page width",
+    );
+    await page.keyboard.press("Escape");
+    const after = await page.locator(".archive-index").boundingBox();
+    assert.ok(Math.abs(before.width - after.width) < 0.5);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("full effects keep their original quality on weaker hardware and stop drawing offscreen", async () => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 2 });
+    Object.defineProperty(navigator, "deviceMemory", { get: () => 2 });
+    window.__fieldFrames = 0;
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (...args) {
+      if (this.canvas.classList.contains("particle-canvas"))
+        window.__fieldFrames++;
+      return clear.apply(this, args);
+    };
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto(url);
+    await page
+      .locator('.spatial-scene[data-scene-state="ready"]')
+      .waitFor({ timeout: 30000 });
+    const quality = await page
+      .locator(".scene-canvas canvas")
+      .evaluate((e) => e.width / e.getBoundingClientRect().width);
+    assert.ok(quality > 1.55, "The original 1.6 DPR WebGL quality was lowered");
+    const field = page.locator(".particle-canvas");
+    await field.scrollIntoViewIfNeeded();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".particle-canvas").dataset.fieldState ===
+        "active",
+    );
+    assert.equal(await field.getAttribute("data-particle-count"), "650");
+    assert.ok(
+      (await field.evaluate((e) => e.width / e.getBoundingClientRect().width)) >
+        1.45,
+      "Particle resolution was lowered",
+    );
+    const first = await page.evaluate(() => window.__fieldFrames);
+    await page.waitForTimeout(600);
+    assert.ok(
+      (await page.evaluate(() => window.__fieldFrames)) > first + 8,
+      "Particle motion was capped or stopped",
+    );
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".particle-canvas").dataset.fieldState ===
+        "resting",
+    );
+    const resting = await page.evaluate(() => window.__fieldFrames);
+    await page.waitForTimeout(350);
+    assert.equal(
+      await page.evaluate(() => window.__fieldFrames),
+      resting,
+      "Offscreen canvas continues drawing",
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test("browsers without worker canvas keep the full WebGL scene and controls", async () => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  await context.addInitScript(() => {
+    HTMLCanvasElement.prototype.transferControlToOffscreen = undefined;
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto(url);
+    await page
+      .locator('.spatial-scene[data-scene-state="ready"]')
+      .waitFor({ timeout: 30000 });
+    assert.equal(
+      await page.locator(".spatial-scene").getAttribute("data-render-thread"),
+      "main",
+    );
+    assert.equal(await page.locator(".scene-canvas canvas").count(), 1);
+    await page
+      .getByRole("button", { name: "PAUSE SCULPTURE", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "RESUME SCULPTURE", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+  } finally {
+    await context.close();
   }
 });

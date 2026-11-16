@@ -1,0 +1,10 @@
+/* Reserve the existing scrollbar space when a project dialog opens, avoiding
+   a layout jump and an unnecessary resize of the WebGL drawing buffer. */
+html {
+  scrollbar-gutter: stable;
+}
+/* Chapters already clip to their viewport. Isolate their layout and paint
+   without changing their geometry, effects, resolution, or animation. */
+.journey-chapter {
+  contain: layout paint;
+}
