@@ -4,6 +4,7 @@ export const asset = (path: string) =>
 // Replace the visual studies here when the real projects are ready.
 export const site = {
   name: "Mzazi",
+  portrait: asset("images/WhatsApp Image 2026-11-16 at 12.08.32.jpeg"),
   role: "Creative developer & designer",
   email: null as string | null,
   introduction:

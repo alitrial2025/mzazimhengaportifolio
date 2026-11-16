@@ -49,7 +49,7 @@ before(async () => {
   browser = await chromium.launch({
     executablePath,
     headless: true,
-    args: ["--no-sandbox"],
+    args: ["--no-sandbox", "--enable-unsafe-swiftshader"],
   });
   mkdirSync("test-results", { recursive: true });
 });
@@ -87,8 +87,8 @@ test("Pages build loads from its repository subpath with local assets", async ()
     await page.waitForTimeout(1200);
     assert.match(await page.title(), /Mzazi/);
     assert.equal(
-      await page.locator("h1").innerText(),
-      "Making\npixels feel\nsomething.",
+      await page.locator("h1").getAttribute("aria-label"),
+      "Beyond the expected.",
     );
     for (const path of [
       "favicon.svg",
@@ -98,6 +98,7 @@ test("Pages build loads from its repository subpath with local assets", async ()
       "images/ridge.jpg",
       "images/sneaker.jpg",
       "images/still-life.jpg",
+      "images/WhatsApp%20Image%202026-11-16%20at%2012.08.32.jpeg",
     ]) {
       const response = await page.request.get(new URL(path, url).href);
       assert.equal(response.status(), 200, `${path} failed to load`);
@@ -177,14 +178,12 @@ test("word reveal, mountain zoom, and 3D sculpture respond to scroll", async () 
     const initialOpacity = Number(
       await word.evaluate((e) => getComputedStyle(e).opacity),
     );
-    await page
-      .locator(".reveal-copy")
-      .evaluate((e) =>
-        window.scrollTo({
-          top: e.getBoundingClientRect().bottom + scrollY - innerHeight * 0.35,
-          behavior: "instant",
-        }),
-      );
+    await page.locator(".reveal-copy").evaluate((e) =>
+      window.scrollTo({
+        top: e.getBoundingClientRect().bottom + scrollY - innerHeight * 0.35,
+        behavior: "instant",
+      }),
+    );
     await page.waitForTimeout(300);
     assert.ok(
       Number(await word.evaluate((e) => getComputedStyle(e).opacity)) >
@@ -231,7 +230,7 @@ test("word reveal, mountain zoom, and 3D sculpture respond to scroll", async () 
       await page.locator(".experiment").getAttribute("class"),
       /palette-1/,
     );
-    assert.match(await page.getByRole("status").innerText(), /sage/);
+    assert.match(await page.getByRole("status").innerText(), /ultraviolet/);
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
@@ -364,5 +363,163 @@ test("manual pause persists after reload and can be resumed", async () => {
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
+  }
+});
+
+test("portrait badge follows a drag, bends its rope, and springs back", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    const badge = page.getByRole("button", {
+      name: "Drag or swing Mzazi's identity badge",
+    });
+    await page.waitForTimeout(2700);
+    await page.locator(".badge-photo img").evaluate((image) => image.decode());
+    assert.ok(
+      await page
+        .locator(".badge-photo img")
+        .evaluate((image) => image.naturalWidth === 1200),
+    );
+    const initial = await badge.boundingBox();
+    const rope = page.locator(".badge-rope path").first();
+    const originalPath = await rope.getAttribute("d");
+    await page.mouse.move(
+      initial.x + initial.width / 2,
+      initial.y + initial.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      initial.x + initial.width / 2 - 80,
+      initial.y + initial.height / 2 + 45,
+      { steps: 10 },
+    );
+    assert.notEqual(
+      await rope.getAttribute("d"),
+      originalPath,
+      "Rope did not follow the card",
+    );
+    await page.mouse.up();
+    await page.waitForTimeout(2200);
+    const returned = await badge.boundingBox();
+    assert.ok(
+      Math.abs(returned.x - initial.x) < 15,
+      "Badge did not settle after release",
+    );
+    await badge.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(150);
+    assert.notEqual(
+      await rope.getAttribute("d"),
+      originalPath,
+      "Keyboard interaction did not swing the badge",
+    );
+    await page.screenshot({ path: "test-results/portrait-badge.png" });
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("each section enters with a distinct treatment and the work stage opens on approach", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    const work = page.locator("#work");
+    const initial = await work.evaluate((e) => getComputedStyle(e).clipPath);
+    await work.evaluate((e) =>
+      window.scrollTo({ top: e.offsetTop - 100, behavior: "instant" }),
+    );
+    await page.waitForTimeout(350);
+    const opened = await work.evaluate((e) => getComputedStyle(e).clipPath);
+    assert.notEqual(opened, initial, "Work stage did not expand on entry");
+    const entrances = await page
+      .locator("[data-entrance]")
+      .evaluateAll((elements) => elements.map((e) => e.dataset.entrance));
+    assert.equal(entrances.length, 6);
+    assert.equal(new Set(entrances).size, 6);
+    await page.locator("#about").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1400);
+    assert.match(
+      await page
+        .locator(".about-grid")
+        .evaluate((e) => getComputedStyle(e).clipPath),
+      /^inset\(0(?:px|%)? 0(?:px|%)? 0(?:px|%)? 0(?:px|%)?\)$/,
+    );
+    await page.screenshot({ path: "test-results/about.png" });
+    await page.locator("#play").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1400);
+    assert.equal(
+      Number(
+        await page
+          .locator(".experiment")
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ),
+      1,
+    );
+    await page.screenshot({ path: "test-results/playground.png" });
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("3D hero renders and stays usable when WebGL is unavailable", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    await page
+      .locator('.spatial-scene[data-scene-state="ready"]')
+      .waitFor({ timeout: 20000 });
+    assert.equal(await page.locator(".scene-canvas canvas").count(), 1);
+    await page
+      .getByRole("button", { name: "PAUSE SCULPTURE", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "RESUME SCULPTURE", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page
+      .getByRole("button", { name: "RESUME SCULPTURE", exact: true })
+      .click();
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+  const fallback = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    await fallback.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+        if (
+          type === "webgl2" ||
+          type === "webgl" ||
+          type === "experimental-webgl"
+        )
+          return null;
+        return original.call(this, type, ...args);
+      };
+    });
+    const p = await fallback.newPage();
+    await p.goto(url);
+    await p.locator('.spatial-scene[data-scene-state="fallback"]').waitFor();
+    assert.equal(
+      Number(
+        await p
+          .locator(".spatial-fallback")
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ),
+      1,
+    );
+    await p.getByRole("button", { name: "Menu +" }).click();
+    assert.ok(
+      await p
+        .getByRole("navigation")
+        .getByRole("link", { name: "About", exact: true })
+        .isVisible(),
+    );
+    await noOverflow(p);
+  } finally {
+    await fallback.close();
   }
 });

@@ -1,6 +1,6 @@
 # Mzazi — an interactive portfolio
 
-An editorial creative developer/designer portfolio built with React, TypeScript, Vite, and Motion for React. The current collection contains clearly labeled visual concepts and placeholder photography, ready to replace with real projects.
+An editorial creative developer/designer portfolio built with React, TypeScript, Vite, Motion for React, and Three.js. The current collection contains clearly labeled visual concepts and placeholder photography, ready to replace with real projects.
 
 ## Develop
 
@@ -17,7 +17,11 @@ Use the existing checkout. Cloud tasks are already isolated; do not create a Git
 
 Edit `src/data/content.ts` for the name, role, biography, email, and visual studies. Set `site.email` to a real address to enable the email link; until then, the contact action clearly explains that details are coming soon. Artwork lives in `src/components/Sculpture.tsx` and `src/App.tsx`; photography and local fonts live in `public/`.
 
-This version includes a horizontal desktop gallery (vertical on mobile), scroll-linked word reveal, image zoom and mountain parallax, rotating CSS 3D sculpture, a color remix control, project dialogs, a ticker, a mobile menu, and persistent motion controls. System reduced motion disables parallax and pinned sequences. Following design feedback, navigation and accents use typography and linework rather than arrows and stars.
+The full-bleed opening layers kinetic typography with a real, iridescent WebGL sculpture that reacts to pointer movement and scroll. Holding slows its rotation; an explicit pause control is available. Its rendering loop stops offscreen and while the tab is hidden, and a static original SVG takes over if WebGL is unavailable. The 3D code loads separately from the main page.
+
+The owner-supplied portrait appears on a hanging ID badge: a textured fixed-point cord, metal clip, transparent sleeve, and spring-driven drop/bounce. Drag it to bend the rope; release to settle, or press Enter/Space to swing with a keyboard. Update `site.portrait` in the content file to replace the image.
+
+Each chapter has a distinct entrance: ribbon wipe, expanding work stage, typographic reveal, tilted landscape portal, spatial playground unfold, and folded contact finale. The page also includes a horizontal desktop gallery (vertical on mobile), scroll-linked word reveal, mountain parallax, rotating CSS 3D experiment, color remix, project dialogs, and persistent motion controls. System reduced motion disables parallax and pinned sequences. Following design feedback, navigation and accents use typography and linework rather than arrows and stars.
 
 ## Validate
 
@@ -25,7 +29,7 @@ This version includes a horizontal desktop gallery (vertical on mobile), scroll-
 npm test
 ```
 
-This builds the **GitHub Pages** version and runs six Chromium browser checks against its repository subpath: assets and layout, real horizontal scroll behavior, keyboard dialogs, text/zoom/3D effects, mobile interactions, reduced motion, and manual motion preferences. The mobile/desktop checks share suites where appropriate. Screenshots are written to ignored `test-results/`.
+This builds the **GitHub Pages** version and runs nine Chromium browser checks against its repository subpath: assets and layout, real horizontal scroll behavior, keyboard dialogs, text/zoom/3D effects, mobile interactions, reduced motion, manual motion preferences, portrait/rope dragging and spring return, distinct section entrances, and actual WebGL plus its no-WebGL fallback. The mobile/desktop checks share suites where appropriate. Screenshots are written to ignored `test-results/`.
 
 The tests use `/usr/bin/chromium` when present, or Playwright's installed Chromium. On another machine, run `npx playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a compatible browser path.
 
@@ -54,6 +58,7 @@ Open the repository subpath `/mzazimhengaportifolio/` on that local server. For 
 - Placeholder product photography: [Start Bootstrap Agency assets](https://github.com/StartBootstrap/startbootstrap-agency/tree/master/dist/assets/img/portfolio). Used `2.jpg` and `6.jpg`. These are illustrative product studies, not client work or affiliations.
 - The two source templates' MIT notices are retained under `docs/licenses/`. No template layouts or application code were reused.
 - Space Grotesk and DM Mono are bundled from [Google Fonts](https://github.com/google/fonts) with their SIL Open Font License notices under `public/fonts/`.
-- Orbital sculptures, wireframe experiment, and linework are created for this implementation.
+- The original portrait was supplied and uploaded by the owner; the source JPEG is preserved unchanged.
+- Orbital sculptures, WebGL shader deformation, wireframe experiment, and linework are created for this implementation.
 
 There is no contact backend, analytics, external font service, or required secret for running the site. Publication uses the existing GitHub Git authentication.

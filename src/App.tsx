@@ -11,7 +11,9 @@ import {
   useReducedMotion,
   useScroll,
   useTransform,
+  useInView,
 } from "motion/react";
+import ImmersiveHero from "./components/ImmersiveHero";
 import { Sculpture } from "./components/Sculpture";
 import {
   MotionPreference,
@@ -81,130 +83,6 @@ function Header() {
   );
 }
 
-function Hero() {
-  const ref = useRef<HTMLElement>(null);
-  const paused = useMotionPaused();
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 110]);
-  const rotate = useTransform(scrollYProgress, [0, 1], [-12, 24]);
-  return (
-    <section
-      ref={ref}
-      className="hero section-pad"
-      id="home"
-      aria-labelledby="hero-heading"
-    >
-      <div className="hero-eyebrow mono">
-        <span>
-          <i className="status-dot" /> {site.role}
-        </span>
-        <span>PORTFOLIO — VOL. 01 / 2026</span>
-      </div>
-      <div className="hero-grid">
-        <div className="hero-title-wrap">
-          <h1 id="hero-heading">
-            <span className="hero-line">
-              <motion.span
-                initial={paused ? false : { y: "110%" }}
-                animate={{ y: 0 }}
-                transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              >
-                Making
-              </motion.span>
-            </span>
-            <span className="hero-line">
-              <motion.span
-                initial={paused ? false : { y: "110%" }}
-                animate={{ y: 0 }}
-                transition={{
-                  duration: 0.9,
-                  delay: 0.1,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                pixels feel
-              </motion.span>
-            </span>
-            <span className="hero-line">
-              <motion.span
-                initial={paused ? false : { y: "110%" }}
-                animate={{ y: 0 }}
-                transition={{
-                  duration: 0.9,
-                  delay: 0.2,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-              >
-                something<span className="orange">.</span>
-              </motion.span>
-            </span>
-          </h1>
-          <Reveal className="hero-bottom" delay={0.3}>
-            <p>
-              Thoughtful design. Playful code.
-              <br />A little unexpected, always.
-            </p>
-            <a
-              href="#work"
-              className="explore-link"
-              aria-label="Explore selected work"
-            >
-              <span>VIEW THE EXPLORATIONS</span>
-              <span className="mono">01—03</span>
-            </a>
-          </Reveal>
-        </div>
-        <motion.div className="hero-art" style={{ y: paused ? 0 : y }}>
-          <div className="art-label mono">
-            <span>FIG. 001</span>
-            <span>ORDER MEETS INSTINCT</span>
-          </div>
-          <div className="hero-art-grid" aria-hidden="true" />
-          <div className="orbit-guide" aria-hidden="true" />
-          <motion.div
-            className="hero-object"
-            style={{ rotate: paused ? -12 : rotate }}
-          >
-            <Sculpture />
-          </motion.div>
-          <span className="art-cross cross-one" aria-hidden="true">
-            +
-          </span>
-          <span className="art-cross cross-two" aria-hidden="true">
-            +
-          </span>
-          <div className="art-caption mono">
-            <span>
-              A STUDY IN
-              <br />
-              CONTROLLED CHAOS
-            </span>
-            <span>
-              AN OPEN
-              <br />
-              EXPERIMENT
-            </span>
-          </div>
-          <span className="art-sticker mono">
-            OPEN TO
-            <br />
-            THE UNEXPECTED.
-          </span>
-        </motion.div>
-      </div>
-      <div className="hero-foot mono">
-        <span>DESIGN + DEVELOPMENT + EXPERIMENTS</span>
-        <a href="#work">
-          SCROLL TO DISCOVER <span className="scroll-line" aria-hidden="true" />
-        </a>
-      </div>
-    </section>
-  );
-}
-
 function Ticker() {
   const ref = useRef<HTMLDivElement>(null);
   const paused = useMotionPaused();
@@ -213,9 +91,16 @@ function Ticker() {
     offset: ["start end", "end start"],
   });
   const x = useTransform(scrollYProgress, [0, 1], [100, -100]);
+  const clip = useTransform(
+    scrollYProgress,
+    [0, 0.45],
+    ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
+  );
   return (
-    <div
+    <motion.div
       ref={ref}
+      data-entrance="ribbon-wipe"
+      style={{ clipPath: paused ? "none" : clip }}
       className="ticker"
       aria-label="Good design is a feeling. Let's make it move."
     >
@@ -229,7 +114,7 @@ function Ticker() {
           ))}
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -298,6 +183,15 @@ function SelectedWork({ onSelect }: { onSelect: (p: Project) => void }) {
     target: ref,
     offset: ["start start", "end end"],
   });
+  const { scrollYProgress: arrival } = useScroll({
+    target: ref,
+    offset: ["start end", "start start"],
+  });
+  const curtain = useTransform(
+    arrival,
+    [0, 0.85],
+    ["inset(0 18% 0 18% round 130px)", "inset(0 0% 0 0% round 0px)"],
+  );
   const x = useTransform(scrollYProgress, [0, 1], [0, -travel]);
   const activeIndex = useTransform(
     scrollYProgress,
@@ -337,11 +231,15 @@ function SelectedWork({ onSelect }: { onSelect: (p: Project) => void }) {
       });
   };
   return (
-    <section
+    <motion.section
+      data-entrance="expanding-stage"
       className={`work-section ${desktop && !paused ? "is-horizontal" : ""}`}
       ref={ref}
       id="work"
-      style={travel ? { height: travel + height } : undefined}
+      style={{
+        ...(travel ? { height: travel + height } : {}),
+        clipPath: paused ? "none" : curtain,
+      }}
       aria-labelledby="work-title"
     >
       <div className="work-sticky">
@@ -349,13 +247,12 @@ function SelectedWork({ onSelect }: { onSelect: (p: Project) => void }) {
           <div>
             <span className="eyebrow mono">01 / SELECTED EXPLORATIONS</span>
             <h2 id="work-title">
-              A few things.
-              <br />
-              <span className="muted-light">A different feeling.</span>
+              NOTHING ORDINARY.
+              <span className="work-subtitle">Just possibilities.</span>
             </h2>
           </div>
           <p className="work-intro">
-            An open playground for ideas.
+            EXPLORATIONS / 01—03
             <br />
             Visual studies today. Your next
             <br />
@@ -419,14 +316,18 @@ function SelectedWork({ onSelect }: { onSelect: (p: Project) => void }) {
           </motion.span>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
 function About() {
+  const paused = useMotionPaused();
+  const section = useRef<HTMLElement>(null);
+  const entered = useInView(section, { once: true, amount: 0.1 });
   return (
     <section
       className="about-section section-pad"
+      ref={section}
       id="about"
       aria-labelledby="about-title"
     >
@@ -434,7 +335,15 @@ function About() {
         <span>02 / THE WAY I SEE IT</span>
         <span className="belief-note">A FEW THINGS I BELIEVE.</span>
       </div>
-      <div className="about-grid">
+      <motion.div
+        className="about-grid"
+        data-entrance="typographic-wipe"
+        initial={paused ? false : { clipPath: "inset(0 100% 0 0)" }}
+        animate={{
+          clipPath: entered || paused ? "inset(0 0% 0 0)" : "inset(0 100% 0 0)",
+        }}
+        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+      >
         <Reveal>
           <h2 id="about-title">
             A curious mind.
@@ -448,7 +357,7 @@ function About() {
           </p>
         </Reveal>
         <TextReveal text={site.introduction} />
-      </div>
+      </motion.div>
       <div className="capabilities">
         {capabilities.map((c, i) => (
           <Reveal key={c.number} delay={i * 0.06}>
@@ -477,17 +386,26 @@ function ZoomScene() {
     target: ref,
     offset: ["start start", "end end"],
   });
-  const scale = useTransform(scrollYProgress, [0, 0.8, 1], [0.76, 1, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.8, 1], [0.56, 1, 1]);
+  const rotate = useTransform(scrollYProgress, [0, 0.75, 1], [-7, 0, 0]);
   const imageY = useTransform(scrollYProgress, [0, 1], [-65, 60]);
   const imageScale = useTransform(scrollYProgress, [0, 1], [1.25, 1.04]);
   const foregroundY = useTransform(scrollYProgress, [0, 1], [110, -65]);
   const textY = useTransform(scrollYProgress, [0, 1], [60, -45]);
   return (
-    <section className="zoom-section" ref={ref} aria-labelledby="zoom-title">
+    <section
+      data-entrance="tilted-portal"
+      className="zoom-section"
+      ref={ref}
+      aria-labelledby="zoom-title"
+    >
       <div className="zoom-sticky">
+        <span className="zoom-ghost" aria-hidden="true">
+          BREATHE.
+        </span>
         <motion.div
           className="zoom-frame"
-          style={{ scale: paused ? 1 : scale }}
+          style={{ scale: paused ? 1 : scale, rotate: paused ? 0 : rotate }}
         >
           <motion.img
             className="zoom-image"
@@ -583,7 +501,17 @@ function Playground() {
             <span className="status-dot" /> EXPERIMENT IN PROGRESS / HAVE A PLAY
           </div>
         </div>
-        <div className={`experiment palette-${palette}`}>
+        <motion.div
+          className={`experiment palette-${palette}`}
+          data-entrance="spatial-unfold"
+          initial={paused ? false : { rotate: -12, scale: 0.8, opacity: 0 }}
+          whileInView={{ rotate: 0, scale: 1, opacity: 1 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <span className="experiment-word" aria-hidden="true">
+            PLAY.
+          </span>
           <span className="experiment-label mono">
             OBJECT 003 — ENDLESS POSSIBILITIES
           </span>
@@ -629,9 +557,10 @@ function Playground() {
             </button>
           </div>
           <span className="sr-only" role="status">
-            Sculpture palette: {["tangerine", "sage", "lavender"][palette]}
+            Sculpture palette:{" "}
+            {["electric lime", "ultraviolet", "sunset"][palette]}
           </span>
-        </div>
+        </motion.div>
       </div>
       <div className="little-gallery">
         <figure>
@@ -742,7 +671,15 @@ function Footer({
   systemReduced: boolean;
 }) {
   return (
-    <footer className="contact-section section-pad" id="contact">
+    <motion.footer
+      className="contact-section section-pad"
+      id="contact"
+      data-entrance="closing-fold"
+      initial={paused ? false : { y: 120, rotateX: -12, opacity: 0.3 }}
+      whileInView={{ y: 0, rotateX: 0, opacity: 1 }}
+      viewport={{ once: true, amount: 0.1 }}
+      transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="section-topline mono">
         <span>04 / THE NEXT GOOD THING</span>
         <span>STARTS WITH A HELLO</span>
@@ -788,7 +725,7 @@ function Footer({
           BACK TO TOP
         </a>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
 
@@ -831,7 +768,7 @@ export default function App() {
           />
           <Header />
           <main id="main">
-            <Hero />
+            <ImmersiveHero />
             <Ticker />
             <SelectedWork onSelect={setSelected} />
             <About />

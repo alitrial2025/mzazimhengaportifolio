@@ -15,12 +15,14 @@
   "dependencies": {
     "motion": "^14.14.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "three": "^0.182.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.182.0",
     "@vitejs/plugin-react": "^5.1.1",
     "playwright": "^1.56.1",
     "typescript": "~5.9.3",

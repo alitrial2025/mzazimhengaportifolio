@@ -1,0 +1,109 @@
+import { lazy, Suspense, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
+import { useMotionPaused } from "./Motion";
+import { Sculpture } from "./Sculpture";
+import { site } from "../data/content";
+import LanyardBadge from "./LanyardBadge";
+
+const SpatialScene = lazy(() => import("./SpatialScene"));
+
+export default function ImmersiveHero() {
+  const ref = useRef<HTMLElement>(null);
+  const paused = useMotionPaused();
+  const [frozen, setFrozen] = useState(false);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end end"],
+  });
+  const titleX = useTransform(scrollYProgress, [0, 1], ["0%", "-18%"]);
+  const subX = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
+  const opacity = useTransform(scrollYProgress, [0.6, 1], [1, 0]);
+  const lineScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  return (
+    <section
+      id="home"
+      className="immersive-hero"
+      ref={ref}
+      aria-labelledby="hero-heading"
+    >
+      <div className="hero-stage">
+        <div className="hero-atmosphere" aria-hidden="true" />
+        <div className="hero-coordinate mono">
+          <span>{site.role}</span>
+          <span>AN INDEPENDENT PERSPECTIVE — 2026</span>
+        </div>
+        <motion.div
+          className="hero-backtype"
+          style={{ x: paused ? 0 : titleX }}
+        >
+          <h1 id="hero-heading" aria-label="Beyond the expected.">
+            <span aria-hidden="true">BEYOND</span>
+          </h1>
+        </motion.div>
+        <motion.div
+          className="hero-backtype hero-type-outline"
+          style={{ x: paused ? 0 : titleX }}
+          aria-hidden="true"
+        >
+          <span>BEYOND</span>
+        </motion.div>
+        <Suspense
+          fallback={
+            <div className="spatial-loading" aria-hidden="true">
+              <Sculpture variant="silver" />
+            </div>
+          }
+        >
+          <SpatialScene
+            progress={scrollYProgress}
+            paused={paused}
+            frozen={frozen}
+          />
+        </Suspense>
+        <LanyardBadge />
+        <motion.div
+          className="hero-fronttype"
+          style={{ x: paused ? 0 : subX, opacity: paused ? 1 : opacity }}
+          aria-hidden="true"
+        >
+          <span>the expected.</span>
+          <span className="hero-period">(®)</span>
+        </motion.div>
+        <motion.div
+          className="hero-bottom-info"
+          style={{ opacity: paused ? 1 : opacity }}
+        >
+          <p>
+            Design that makes you look.
+            <br />
+            Code that makes you stay.
+          </p>
+          <div className="hero-interaction-note mono">
+            <span>MOVE TO EXPLORE. HOLD TO SLOW DOWN.</span>
+            <button
+              aria-pressed={frozen}
+              onClick={() => setFrozen(!frozen)}
+              disabled={paused}
+            >
+              {paused
+                ? "SCULPTURE AT REST"
+                : frozen
+                  ? "RESUME SCULPTURE"
+                  : "PAUSE SCULPTURE"}
+            </button>
+          </div>
+          <a href="#work" className="hero-discover mono">
+            <span>ENTER THE EXPLORATIONS</span>
+            <span>01 — 03</span>
+          </a>
+        </motion.div>
+        <div className="hero-scroll-rail" aria-hidden="true">
+          <motion.span style={{ scaleX: paused ? 1 : lineScale }} />
+        </div>
+        <span className="hero-edition mono" aria-hidden="true">
+          SCROLL TO CHANGE YOUR PERSPECTIVE
+        </span>
+      </div>
+    </section>
+  );
+}
