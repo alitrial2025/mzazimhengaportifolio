@@ -104,10 +104,13 @@ test("Pages build loads from its repository subpath with local assets", async ()
       assert.equal(response.status(), 200, `${path} failed to load`);
       assert.ok((await response.body()).length > 100, `${path} is empty`);
     }
-    assert.ok(
-      await page
-        .locator(".work-section")
-        .evaluate((e) => e.classList.contains("is-horizontal")),
+    assert.equal(
+      await page.getByRole("button", { name: /^Preview / }).count(),
+      3,
+    );
+    assert.equal(
+      await page.locator(".archive-print-caption strong").innerText(),
+      "Off Script",
     );
     await noOverflow(page);
     await page.screenshot({ path: "test-results/desktop.png" });
@@ -117,29 +120,21 @@ test("Pages build loads from its repository subpath with local assets", async ()
   }
 });
 
-test("scrolling drives the horizontal gallery and project dialogs work with keyboard", async () => {
+test("contact sheet changes previews on hover and focus, with keyboard project dialogs", async () => {
   const { page, context, errors } = await pageFor();
   try {
-    await page
-      .locator("#work")
-      .evaluate((e) =>
-        window.scrollTo({ top: e.offsetTop, behavior: "instant" }),
-      );
-    await page.waitForTimeout(300);
-    const beforeX = await page
-      .locator(".project-track")
-      .evaluate((e) => e.getBoundingClientRect().x);
-    await page.mouse.wheel(0, 700);
-    await page.waitForTimeout(500);
-    const afterX = await page
-      .locator(".project-track")
-      .evaluate((e) => e.getBoundingClientRect().x);
-    assert.ok(
-      afterX < beforeX - 100,
-      `Gallery did not move: ${beforeX} -> ${afterX}`,
+    const second = page.getByRole("button", { name: "Preview In Good Form" });
+    await second.hover();
+    assert.equal(await second.getAttribute("aria-pressed"), "true");
+    assert.equal(
+      await page.locator(".archive-print-caption strong").innerText(),
+      "In Good Form",
     );
-    await page.getByRole("button", { name: "Go to visual concept 03" }).click();
-    await page.waitForTimeout(900);
+    const third = page.getByRole("button", {
+      name: "Preview Extra / Ordinary",
+    });
+    await third.focus();
+    assert.equal(await third.getAttribute("aria-pressed"), "true");
     const project = page.getByRole("button", {
       name: "Explore Extra / Ordinary, visual concept 03",
     });
@@ -164,6 +159,7 @@ test("scrolling drives the horizontal gallery and project dialogs work with keyb
       await page.locator("body").evaluate((e) => e.style.overflow),
       "hidden",
     );
+    await page.screenshot({ path: "test-results/contact-sheet.png" });
     await noOverflow(page);
     assert.deepEqual(errors, []);
   } finally {
@@ -171,11 +167,11 @@ test("scrolling drives the horizontal gallery and project dialogs work with keyb
   }
 });
 
-test("word reveal, mountain zoom, and 3D sculpture respond to scroll", async () => {
+test("scroll reveal and the slower landscape tell all three chapters to completion", async () => {
   const { page, context, errors } = await pageFor();
   try {
     const word = page.locator(".reveal-copy > span > span").last();
-    const initialOpacity = Number(
+    const initial = Number(
       await word.evaluate((e) => getComputedStyle(e).opacity),
     );
     await page.locator(".reveal-copy").evaluate((e) =>
@@ -184,60 +180,85 @@ test("word reveal, mountain zoom, and 3D sculpture respond to scroll", async () 
         behavior: "instant",
       }),
     );
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(350);
     assert.ok(
-      Number(await word.evaluate((e) => getComputedStyle(e).opacity)) >
-        initialOpacity,
+      Number(await word.evaluate((e) => getComputedStyle(e).opacity)) > initial,
     );
-    const zoom = page.locator(".zoom-section");
-    await zoom.evaluate((e) =>
-      window.scrollTo({ top: e.offsetTop, behavior: "instant" }),
+    const story = page.locator(".perspective-section");
+    assert.ok(
+      await story.evaluate((e) => e.offsetHeight >= innerHeight * 4),
+      "Story has too little scroll space",
     );
-    await page.waitForTimeout(300);
-    const firstScale = await page
-      .locator(".zoom-frame")
-      .evaluate((e) => getComputedStyle(e).transform);
-    await zoom.evaluate((e) =>
-      window.scrollTo({
-        top: e.offsetTop + (e.offsetHeight - innerHeight) * 0.9,
-        behavior: "instant",
-      }),
+    async function progress(value) {
+      await story.evaluate(
+        (e, p) =>
+          window.scrollTo({
+            top: e.offsetTop + (e.offsetHeight - innerHeight) * p,
+            behavior: "instant",
+          }),
+        value,
+      );
+      await page.waitForTimeout(350);
+    }
+    await progress(0.15);
+    assert.ok(
+      Number(
+        await page
+          .locator('[data-passage="look"]')
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ) > 0.95,
     );
-    await page.waitForTimeout(300);
+    const imageStart = await page
+      .locator(".perspective-image")
+      .evaluate((e) => e.style.transform);
+    await progress(0.52);
+    assert.ok(
+      Number(
+        await page
+          .locator('[data-passage="closer"]')
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ) > 0.95,
+    );
+    assert.ok(
+      Number(
+        await page
+          .locator('[data-passage="look"]')
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ) < 0.01,
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Read landscape chapter 2: LOOK CLOSER" })
+        .getAttribute("aria-current"),
+      "step",
+    );
+    await progress(0.92);
+    assert.ok(
+      Number(
+        await page
+          .locator('[data-passage="carry"]')
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ) > 0.95,
+    );
     assert.notEqual(
       await page
-        .locator(".zoom-frame")
-        .evaluate((e) => getComputedStyle(e).transform),
-      firstScale,
+        .locator(".perspective-image")
+        .evaluate((e) => e.style.transform),
+      imageStart,
     );
-    await page.locator(".zoom-image").evaluate((e) => e.decode());
-    await page.screenshot({ path: "test-results/zoom.png" });
-    await page.locator("#play").scrollIntoViewIfNeeded();
-    await page.waitForTimeout(400);
-    const startRotation = await page
-      .locator(".spiral-object")
-      .evaluate((e) => getComputedStyle(e).transform);
-    await page.mouse.wheel(0, 300);
-    await page.waitForTimeout(400);
-    assert.notEqual(
-      await page
-        .locator(".spiral-object")
-        .evaluate((e) => getComputedStyle(e).transform),
-      startRotation,
-    );
-    await page.getByRole("button", { name: "Change sculpture color" }).click();
     assert.match(
-      await page.locator(".experiment").getAttribute("class"),
-      /palette-1/,
+      await page.locator('[data-passage="carry"]').innerText(),
+      /END OF FIELD NOTE/,
     );
-    assert.match(await page.getByRole("status").innerText(), /ultraviolet/);
+    await page.locator(".perspective-image").evaluate((e) => e.decode());
+    await page.screenshot({ path: "test-results/perspective-ending.png" });
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
   }
 });
 
-test("mobile menu, vertical projects, accordion and contact preview are usable", async () => {
+test("mobile menu, contact sheet, touch reveal, accordion and contact preview are usable", async () => {
   const { page, context, errors } = await pageFor({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -272,6 +293,19 @@ test("mobile menu, vertical projects, accordion and contact preview are usable",
     const capability = page.locator(".capability").nth(1);
     await capability.locator("summary").click();
     assert.ok(await capability.evaluate((e) => e.open));
+    const reveal = page.getByRole("button", { name: "REVEAL THE OTHER SIDE" });
+    await reveal.click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "RETURN TO THE TEXT" })
+        .getAttribute("aria-expanded"),
+      "true",
+    );
+    assert.equal(
+      await page.locator(".lens-overlay").getAttribute("aria-hidden"),
+      "false",
+    );
+    await page.getByRole("button", { name: "RETURN TO THE TEXT" }).click();
     await page.getByRole("button", { name: "Say hello", exact: true }).click();
     const contact = page.getByRole("dialog", { name: "Let’s connect" });
     await contact.waitFor({ state: "visible" });
@@ -305,7 +339,7 @@ test("system reduced motion removes pinned scrolling and remains fully readable"
     );
     assert.equal(
       await page
-        .locator(".zoom-sticky")
+        .locator(".perspective-stage")
         .evaluate((e) => getComputedStyle(e).position),
       "relative",
     );
@@ -355,9 +389,9 @@ test("manual pause persists after reload and can be resumed", async () => {
       "active",
     );
     assert.ok(
-      (await page.locator("#work").getAttribute("class")).includes(
-        "is-horizontal",
-      ),
+      !(
+        await page.locator(".perspective-section").getAttribute("class")
+      ).includes("is-still"),
     );
     await noOverflow(page);
     assert.deepEqual(errors, []);
@@ -419,7 +453,7 @@ test("portrait badge follows a drag, bends its rope, and springs back", async ()
   }
 });
 
-test("each section enters with a distinct treatment and the work stage opens on approach", async () => {
+test("sections have distinct entrances and the contact sheet opens on approach", async () => {
   const { page, context, errors } = await pageFor();
   try {
     const work = page.locator("#work");
@@ -446,13 +480,18 @@ test("each section enters with a distinct treatment and the work stage opens on 
     await page.screenshot({ path: "test-results/about.png" });
     await page.locator("#play").scrollIntoViewIfNeeded();
     await page.waitForTimeout(1400);
-    assert.equal(
+    await page.waitForFunction(
+      () =>
+        Number(
+          getComputedStyle(document.querySelector(".field-theatre")).opacity,
+        ) >= 0.999,
+    );
+    assert.ok(
       Number(
         await page
-          .locator(".experiment")
+          .locator(".field-theatre")
           .evaluate((e) => getComputedStyle(e).opacity),
-      ),
-      1,
+      ) >= 0.999,
     );
     await page.screenshot({ path: "test-results/playground.png" });
     assert.deepEqual(errors, []);
@@ -521,5 +560,114 @@ test("3D hero renders and stays usable when WebGL is unavailable", async () => {
     await noOverflow(p);
   } finally {
     await fallback.close();
+  }
+});
+
+test("pointer lens uncovers the hidden manifesto and has a keyboard alternative", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    const lens = page.locator(".lens-area");
+    await lens.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1300);
+    const before = await page
+      .locator(".lens-overlay")
+      .evaluate((e) => getComputedStyle(e).maskImage);
+    const box = await lens.boundingBox();
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, {
+      steps: 8,
+    });
+    await page.waitForTimeout(600);
+    const after = await page
+      .locator(".lens-overlay")
+      .evaluate((e) => getComputedStyle(e).maskImage);
+    assert.notEqual(after, before, "Pointer did not open the lens");
+    assert.match(after, /radial-gradient/);
+    await page.screenshot({ path: "test-results/pointer-lens.png" });
+    const reveal = page.getByRole("button", { name: "REVEAL THE OTHER SIDE" });
+    await reveal.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(
+      await page.locator(".lens-overlay").getAttribute("aria-hidden"),
+      "false",
+    );
+    assert.equal(
+      await page
+        .locator(".lens-overlay")
+        .evaluate((e) => getComputedStyle(e).maskImage),
+      "none",
+    );
+    assert.match(await page.locator(".lens-overlay").innerText(), /Instinct/);
+    await page.getByRole("button", { name: "RETURN TO THE TEXT" }).click();
+    assert.equal(
+      await page.locator(".lens-base").getAttribute("aria-hidden"),
+      "false",
+    );
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("particle room responds to pointer and hold, and shape controls work without motion", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    const field = page.locator(".particle-canvas");
+    await field.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1600);
+    const box = await field.boundingBox();
+    await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.5);
+    await page.waitForTimeout(150);
+    assert.equal(await field.getAttribute("data-interaction"), "repelling");
+    await page.mouse.down();
+    await page.waitForTimeout(200);
+    assert.equal(await field.getAttribute("data-interaction"), "gathering");
+    await page.mouse.up();
+    await page.getByRole("button", { name: "PULSE THE FIELD" }).click();
+    await page
+      .getByRole("button", { name: "Set field to Wave", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Set field to Wave", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.match(await page.getByRole("status").innerText(), /landscape/);
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: "test-results/experiment-room.png" });
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+  const still = await pageFor({ reducedMotion: "reduce" });
+  try {
+    const field = still.page.locator(".particle-canvas");
+    await field.scrollIntoViewIfNeeded();
+    await still.page.waitForFunction(
+      () =>
+        document.querySelector(".particle-canvas")?.dataset.fieldState ===
+        "still",
+    );
+    const first = await field.evaluate((e) => e.toDataURL());
+    await still.page
+      .getByRole("button", { name: "Set field to Wave", exact: true })
+      .click();
+    await still.page.waitForTimeout(250);
+    const second = await field.evaluate((e) => e.toDataURL());
+    assert.notEqual(second, first, "Static shape did not change");
+    await still.page.waitForTimeout(250);
+    assert.equal(
+      await field.evaluate((e) => e.toDataURL()),
+      second,
+      "Reduced motion field keeps animating",
+    );
+    assert.ok(
+      await still.page
+        .getByRole("button", { name: "PULSE THE FIELD" })
+        .isDisabled(),
+    );
+    assert.deepEqual(still.errors, []);
+  } finally {
+    await still.context.close();
   }
 });
