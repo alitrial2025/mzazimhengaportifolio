@@ -2,12 +2,17 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import { useMotionPaused } from "./Motion";
 import { Sculpture } from "./Sculpture";
-import { site, projects } from "../data/content";
+import { site, projects, type Project } from "../data/content";
 import LanyardBadge from "./LanyardBadge";
+import ProjectReel from "./ProjectReel";
 
 const SpatialScene = lazy(() => import("./SpatialScene"));
 
-export default function ImmersiveHero() {
+export default function ImmersiveHero({
+  onSelect,
+}: {
+  onSelect: (project: Project) => void;
+}) {
   const ref = useRef<HTMLElement>(null);
   const paused = useMotionPaused();
   const [frozen, setFrozen] = useState(false);
@@ -19,6 +24,11 @@ export default function ImmersiveHero() {
   const subX = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
   const opacity = useTransform(scrollYProgress, [0.6, 1], [1, 0]);
   const lineScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const openingOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.16, 0.5, 1],
+    [1, 1, 0.13, 0.08],
+  );
   return (
     <section
       id="home"
@@ -33,42 +43,48 @@ export default function ImmersiveHero() {
           <span>AN INDEPENDENT PERSPECTIVE — 2026</span>
         </div>
         <motion.div
-          className="hero-backtype"
-          style={{ x: paused ? 0 : titleX }}
+          className="hero-first-act"
+          style={{ opacity: paused ? 1 : openingOpacity }}
         >
-          <h1 id="hero-heading" aria-label="Beyond the expected.">
-            <span aria-hidden="true">BEYOND</span>
-          </h1>
+          <motion.div
+            className="hero-backtype"
+            style={{ x: paused ? 0 : titleX }}
+          >
+            <h1 id="hero-heading" aria-label="Beyond the expected.">
+              <span aria-hidden="true">BEYOND</span>
+            </h1>
+          </motion.div>
+          <motion.div
+            className="hero-backtype hero-type-outline"
+            style={{ x: paused ? 0 : titleX }}
+            aria-hidden="true"
+          >
+            <span>BEYOND</span>
+          </motion.div>
+          <Suspense
+            fallback={
+              <div className="spatial-loading" aria-hidden="true">
+                <Sculpture variant="silver" />
+              </div>
+            }
+          >
+            <SpatialScene
+              progress={scrollYProgress}
+              paused={paused}
+              frozen={frozen}
+            />
+          </Suspense>
+          <motion.div
+            className="hero-fronttype"
+            style={{ x: paused ? 0 : subX, opacity: paused ? 1 : opacity }}
+            aria-hidden="true"
+          >
+            <span>the expected.</span>
+            <span className="hero-period">(®)</span>
+          </motion.div>
         </motion.div>
-        <motion.div
-          className="hero-backtype hero-type-outline"
-          style={{ x: paused ? 0 : titleX }}
-          aria-hidden="true"
-        >
-          <span>BEYOND</span>
-        </motion.div>
-        <Suspense
-          fallback={
-            <div className="spatial-loading" aria-hidden="true">
-              <Sculpture variant="silver" />
-            </div>
-          }
-        >
-          <SpatialScene
-            progress={scrollYProgress}
-            paused={paused}
-            frozen={frozen}
-          />
-        </Suspense>
         <LanyardBadge />
-        <motion.div
-          className="hero-fronttype"
-          style={{ x: paused ? 0 : subX, opacity: paused ? 1 : opacity }}
-          aria-hidden="true"
-        >
-          <span>the expected.</span>
-          <span className="hero-period">(®)</span>
-        </motion.div>
+        <ProjectReel progress={scrollYProgress} onSelect={onSelect} />
         <motion.div
           className="hero-bottom-info"
           style={{ opacity: paused ? 1 : opacity }}
@@ -93,7 +109,7 @@ export default function ImmersiveHero() {
             </button>
           </div>
           <a href="#work" className="hero-discover mono">
-            <span>ENTER THE EXPLORATIONS</span>
+            <span>EXPLORE THE SELECTED WORK</span>
             <span>01 — {String(projects.length).padStart(2, "0")}</span>
           </a>
         </motion.div>

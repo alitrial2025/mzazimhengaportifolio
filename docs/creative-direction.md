@@ -85,3 +85,10 @@ The owner asked to replace the familiar “Nothing ordinary” gallery, layer po
 ## Real project collection
 
 The owner supplied TV/mobile Kotlin HomeScreen files and links/references for Jeff’s Concepts and R. K. Njogu Advocates. All four replace the provisional studies. Website imagery is captured from original source builds, and project cases include real destinations and source links. The native home screens are rebuilt as lazy-loaded, interactive React previews with original artwork, source-defined dimensions, keyboard/touch controls, and profile-scoped saved lists. The public cases distinguish native Kotlin work from browser UI reconstruction and local demonstration data. Streaming/authentication/backend services are not represented as ported or connected.
+
+
+## Projects throughout the experience — 16 November 2026
+
+The four real projects now supply the visual thread across the whole site. The hero retains its sculpture and portrait lanyard, introduces four immediate project actions, and unfolds into an oversized contact reel with scroll. Project names travel through the ticker. The mouse lens uncovers a collage of real interfaces; the approach section links its thinking back to the cases. The earlier mountain passage becomes four held, art-directed project scenes: a large original bicycle cutout, a warm office and legal website, the TV interface as an oversized display, then the mobile interface with a TV echo. Chapter navigation, parallax, aperture entry, and an explicit ending keep the pace deliberate. The particle room remains interactive and is followed by a working native-interface preview desk. The footer reprises the four projects before the contact invitation.
+
+Jeff’s latest source at `3b01c74` supplies the refreshed More ride. Less routine. homepage capture and original bicycle artwork. Reduced motion shows all four project chapters in ordinary document flow; invisible animated scenes are inert. Existing project dialogs and both React app previews stay connected throughout.

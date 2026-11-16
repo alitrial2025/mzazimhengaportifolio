@@ -89,14 +89,18 @@ function Ticker() {
       data-entrance="ribbon-wipe"
       style={{ clipPath: paused ? "none" : clip }}
       className="ticker"
-      aria-label="Good design is a feeling. Let's make it move."
+      aria-label="Jeff’s Concepts. R. K. Njogu Advocates. NetflixPro TV. NetflixPro Mobile."
     >
       <motion.div style={{ x: paused ? 0 : x }}>
         <div className="ticker-loop" aria-hidden="true">
-          {Array.from({ length: 4 }, (_, i) => (
+          {Array.from({ length: 2 }, (_, i) => (
             <span className="ticker-unit" key={i}>
-              GOOD DESIGN IS A FEELING <span className="ticker-divider">/</span>{" "}
-              LET’S MAKE IT MOVE <span className="ticker-divider">/</span>
+              {projects.map((project) => (
+                <span className="ticker-project" key={project.id}>
+                  {project.name.toUpperCase()}{" "}
+                  <span className="ticker-divider">/</span>
+                </span>
+              ))}
             </span>
           ))}
         </div>
@@ -105,7 +109,7 @@ function Ticker() {
   );
 }
 
-function About() {
+function About({ onSelect }: { onSelect: (project: Project) => void }) {
   const paused = useMotionPaused();
   const section = useRef<HTMLElement>(null);
   const entered = useInView(section, { once: true, amount: 0.1 });
@@ -143,6 +147,19 @@ function About() {
         </Reveal>
         <PointerManifesto />
       </motion.div>
+      <div
+        className="belief-projects"
+        aria-label="Projects behind the approach"
+      >
+        <span className="mono">THE THINKING, IN PRACTICE.</span>
+        {projects.map((project) => (
+          <button key={project.id} onClick={() => onSelect(project)}>
+            <span className="mono">{project.number}</span>
+            {project.name}
+            <span aria-hidden="true">+</span>
+          </button>
+        ))}
+      </div>
       <div className="capabilities">
         {capabilities.map((c, i) => (
           <Reveal key={c.number} delay={i * 0.06}>
@@ -219,11 +236,13 @@ function Footer({
   paused,
   onToggle,
   systemReduced,
+  onSelect,
 }: {
   onContact: () => void;
   paused: boolean;
   onToggle: () => void;
   systemReduced: boolean;
+  onSelect: (project: Project) => void;
 }) {
   return (
     <motion.footer
@@ -238,6 +257,59 @@ function Footer({
       <div className="section-topline mono">
         <span>04 / THE NEXT GOOD THING</span>
         <span>STARTS WITH A HELLO</span>
+      </div>
+      <div
+        className="footer-projects"
+        aria-label="One more look at the projects"
+      >
+        <div className="footer-projects-heading">
+          <span className="mono">BEFORE YOU GO / ONE MORE LOOK.</span>
+          <span className="mono">
+            FOUR DIFFERENT WORLDS. THE SAME ATTENTION.
+          </span>
+        </div>
+        <div className="footer-project-list">
+          {projects.map((project, index) => (
+            <motion.button
+              key={project.id}
+              onClick={() => onSelect(project)}
+              aria-label={`Revisit ${project.name}`}
+              initial={
+                paused
+                  ? false
+                  : {
+                      y: 70 + index * 20,
+                      rotate: index % 2 ? 5 : -5,
+                      opacity: 0,
+                    }
+              }
+              whileInView={{ y: 0, rotate: 0, opacity: 1 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{
+                duration: 0.9,
+                delay: index * 0.08,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <div
+                className={`footer-project-image footer-project-${project.format.toLowerCase()}`}
+              >
+                <img
+                  src={project.image}
+                  alt={project.alt}
+                  width="360"
+                  height="230"
+                  loading="lazy"
+                />
+              </div>
+              <span>
+                <span className="mono">{project.number}</span>
+                {project.name}
+                <span aria-hidden="true">+</span>
+              </span>
+            </motion.button>
+          ))}
+        </div>
       </div>
       <Reveal>
         <h2>
@@ -323,11 +395,11 @@ export default function App() {
           />
           <Header />
           <main id="main">
-            <ImmersiveHero />
+            <ImmersiveHero onSelect={setSelected} />
             <Ticker />
             <ArchiveWork onSelect={setSelected} />
-            <About />
-            <PerspectiveStory />
+            <About onSelect={setSelected} />
+            <PerspectiveStory onSelect={setSelected} />
             <ExperimentRoom />
           </main>
           <Footer
@@ -335,6 +407,7 @@ export default function App() {
             paused={paused}
             onToggle={toggleMotion}
             systemReduced={systemReduced}
+            onSelect={setSelected}
           />
           <Dialog
             title={selected ? `${selected.name} — project` : "Project"}

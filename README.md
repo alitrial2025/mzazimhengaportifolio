@@ -1,6 +1,6 @@
 # Mzazi — an interactive portfolio
 
-An editorial creative developer/designer portfolio built with React, TypeScript, Vite, Motion for React, and Three.js. The collection showcases four real projects: Jeff’s Concepts, R. K. Njogu & Company Advocates, NetflixPro TV, and NetflixPro Mobile. The Kotlin projects include interactive React home-screen reconstructions with original artwork.
+An editorial creative developer/designer portfolio built with React, TypeScript, Vite, Motion for React, and Three.js. Real projects run through the entire page, from a scroll-unfolding hero reel and mouse-reveal collage to four full-screen project chapters, an interactive preview desk, and the final project index. The collection showcases: Jeff’s Concepts, R. K. Njogu & Company Advocates, NetflixPro TV, and NetflixPro Mobile. The Kotlin projects include interactive React home-screen reconstructions with original artwork.
 
 ## Develop
 
@@ -17,17 +17,17 @@ Use the existing checkout. Cloud tasks are already isolated; do not create a Git
 
 Edit `src/data/content.ts` for the name, role, biography, email, and project cases. Set `site.email` to a real address to enable the email link; until then, the contact action clearly explains that details are coming soon. Artwork lives in `src/components/Sculpture.tsx` and `src/components/ProjectArt.tsx`; photography and local fonts live in `public/`.
 
-The full-bleed opening layers kinetic typography with a real, iridescent WebGL sculpture that reacts to pointer movement and scroll. Holding slows its rotation; an explicit pause control is available. Its rendering loop stops offscreen and while the tab is hidden, and a static original SVG takes over if WebGL is unavailable. The 3D code loads separately from the main page.
+The full-bleed opening layers kinetic typography with a real, iridescent WebGL sculpture that reacts to pointer movement and scroll. Four project thumbnails open studies immediately; scrolling unfolds the real interfaces into an oversized reel while the opening scene recedes. The portrait lanyard stays in the scene. Holding slows its rotation; an explicit pause control is available. Its rendering loop stops offscreen and while the tab is hidden, and a static original SVG takes over if WebGL is unavailable. The 3D code loads separately from the main page.
 
 The owner-supplied portrait appears on a hanging ID badge: a textured fixed-point cord, metal clip, transparent sleeve, and spring-driven drop/bounce. Drag it to bend the rope; release to settle, or press Enter/Space to swing with a keyboard. Update `site.portrait` in the content file to replace the image.
 
 The collection is an interactive contact sheet: hover, focus, or tap a project name to change its printed artwork, then open the project case. Website cases link to the sites; the Android cases link to working React UI previews. It replaces the earlier horizontal card gallery.
 
-The about text reveals with scrolling. A spring-smoothed pointer lens uncovers a second, iridescent typographic layer. **Reveal the other side** provides the same content on touch and keyboard, including with reduced motion.
+The about text reveals with scrolling. A spring-smoothed pointer lens uncovers a second, iridescent typographic layer with a collage of the four real interfaces. Project links connect the approach to the actual work. **Reveal the other side** provides the same content on touch and keyboard, including with reduced motion.
 
-The landscape is a three-chapter story with an opening, a held middle, and a resolved ending. It has 480svh (4.8 screens) of space on desktop and 360svh (3.6 screens) on mobile; the sticky scene occupies one viewport, leaving a continuous scroll range of 380svh / 260svh. Chapter controls let visitors jump directly to a passage. Reduced motion shows all three passages naturally without pinning.
+The project story gives each project its own held chapter: Jeff’s original bicycle artwork, the law practice’s office and website, a large TV interface, and the mobile interface. An aperture entrance and scroll-linked parallax lead into long resting moments, with four chapter controls and a resolved ending. Desktop has 640svh of space, mobile 560svh. Reduced motion and manual pause show all four chapters in normal flow; inactive animated chapters are inert and hidden from assistive technology. Every chapter opens its project study.
 
-The experiment room replaces the earlier spiral panel. A deterministic Canvas 2D particle field morphs between Orbit, Wave, and Scatter, bends away from the pointer, gathers when held, and responds to a pulse control. It stops rendering offscreen or when the tab is hidden. Reduced motion renders a still field; the shape controls remain functional without animation.
+The experiment room replaces the earlier spiral panel. A deterministic Canvas 2D particle field morphs between Orbit, Wave, and Scatter, bends away from the pointer, gathers when held, and responds to a pulse control. It stops rendering offscreen or when the tab is hidden. Reduced motion renders a still field; the shape controls remain functional without animation. A device desk below the field launches the working TV and mobile React previews; the two websites are linked alongside. The closing section brings all four projects back into view before the contact invitation.
 
 The sections have distinct entrances with clear resting moments. Navigation and accents retain the owner's preference for typography and linework, without decorative arrows or stars.
 
@@ -37,7 +37,7 @@ The sections have distinct entrances with clear resting moments. Navigation and 
 npm test
 ```
 
-This builds the **GitHub Pages** version and runs sixteen Chromium browser checks against its repository subpath: local assets, project selection and dialogs, all three landscape chapters, touch interactions, reduced motion, persistent pause, the portrait lanyard, section entrances, WebGL and its fallback, the pointer lens, the particle room, real project actions, TV keyboard navigation, mobile geometry and list persistence, native filter/utility panels, and preview-route isolation. Screenshots are written to ignored `test-results/`. The original Android apps are not compiled by this browser suite.
+This builds the **GitHub Pages** version and runs eighteen Chromium browser checks against its repository subpath: local assets, project selection and dialogs, all four held project chapters, touch interactions, reduced motion, persistent pause, the portrait lanyard, section entrances, WebGL and its fallback, the pointer lens, the particle room, real project actions, TV keyboard navigation, mobile geometry and list persistence, native filter/utility panels, preview-route isolation, hero reel actions, and the project links across about, the preview desk, and the final index on touch and reduced motion. Screenshots are written to ignored `test-results/`. The original Android apps are not compiled by this browser suite.
 
 The tests use `/usr/bin/chromium` when present, or Playwright's installed Chromium. On another machine, run `npx playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to a compatible browser path.
 
@@ -79,7 +79,7 @@ The owner’s original Kotlin files depend on runtime data and additional compon
 - Space Grotesk and DM Mono are bundled from [Google Fonts](https://github.com/google/fonts) with their SIL Open Font License notices under `public/fonts/`.
 - The original portrait was supplied and uploaded by the owner; the source JPEG is preserved unchanged.
 - NetflixPro poster, backdrop, logo and game artwork comes from the owner’s original native repositories. Android vector paths were converted to SVG; the profile smile fallbacks are drawn as SVG. Roboto is bundled with its SIL OFL notice.
-- Website previews were captured locally from the owner’s source repositories; the phone and TV preview images are captures of the React reconstructions.
+- Website previews were captured locally from the owner’s source repositories; Jeff’s storefront capture is refreshed from `3b01c74`, including its original `hero-bike.webp`. The law chapter uses its original `legal/hero.webp`. The phone and TV preview images are captures of the React reconstructions.
 - Orbital sculptures, WebGL shader deformation, the particle field, and linework are created for this implementation.
 
 The portfolio and its UI previews have no contact backend, analytics, external font service, or required secret. Publication uses the existing GitHub Git authentication.

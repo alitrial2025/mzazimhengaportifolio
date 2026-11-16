@@ -94,10 +94,12 @@ test("Pages build loads from its repository subpath with local assets", async ()
       "favicon.svg",
       "fonts/space-grotesk.ttf",
       "fonts/dm-mono.ttf",
-      "images/mountain.jpg",
-      "images/ridge.jpg",
-      "images/sneaker.jpg",
-      "images/still-life.jpg",
+      "projects/sites/jeffs.jpg",
+      "projects/sites/jeffs-hero-bike.webp",
+      "projects/sites/rk-njogu.jpg",
+      "projects/sites/rk-njogu-office.webp",
+      "projects/netflix/preview-tv.png",
+      "projects/netflix/preview-mobile.png",
       "images/WhatsApp%20Image%202026-11-16%20at%2012.08.32.jpeg",
     ]) {
       const response = await page.request.get(new URL(path, url).href);
@@ -169,7 +171,7 @@ test("contact sheet changes previews on hover and focus, with keyboard project d
   }
 });
 
-test("scroll reveal and the slower landscape tell all three chapters to completion", async () => {
+test("scroll reveal and four project chapters have held moments, live actions and a resolved ending", async () => {
   const { page, context, errors } = await pageFor();
   try {
     const word = page.locator(".reveal-copy > span > span").last();
@@ -186,12 +188,18 @@ test("scroll reveal and the slower landscape tell all three chapters to completi
     assert.ok(
       Number(await word.evaluate((e) => getComputedStyle(e).opacity)) > initial,
     );
-    const story = page.locator(".perspective-section");
+    const story = page.locator(".project-journey");
     assert.ok(
-      await story.evaluate((e) => e.offsetHeight >= innerHeight * 4),
-      "Story has too little scroll space",
+      await story.evaluate((e) => e.offsetHeight >= innerHeight * 6),
+      "The work needs room to breathe",
     );
-    async function progress(value) {
+    const names = [
+      "Jeff’s Concepts",
+      "R. K. Njogu Advocates",
+      "NetflixPro / TV",
+      "NetflixPro / Mobile",
+    ];
+    for (const [index, value] of [0.1, 0.35, 0.6, 0.9].entries()) {
       await story.evaluate(
         (e, p) =>
           window.scrollTo({
@@ -201,59 +209,87 @@ test("scroll reveal and the slower landscape tell all three chapters to completi
         value,
       );
       await page.waitForTimeout(350);
+      const chapter = page.locator(".journey-chapter").nth(index);
+      assert.ok(
+        Number(await chapter.evaluate((e) => getComputedStyle(e).opacity)) >
+          0.99,
+      );
+      assert.equal(await chapter.getAttribute("aria-hidden"), "false");
+      assert.equal(await chapter.evaluate((e) => e.inert), false);
+      const inactive = page
+        .locator(".journey-chapter")
+        .nth(index === 0 ? 1 : 0);
+      assert.equal(
+        await inactive.evaluate((e) => e.inert),
+        true,
+        "Invisible scene captures focus",
+      );
+      await chapter
+        .locator("img")
+        .evaluateAll((imgs) => Promise.all(imgs.map((img) => img.decode())));
+      assert.equal(
+        await page
+          .getByRole("button", {
+            name: `Read project chapter ${index + 1}: ${names[index]}`,
+          })
+          .getAttribute("aria-current"),
+        "step",
+      );
+      await page
+        .getByRole("button", {
+          name: `Open ${names[index]} story`,
+          exact: true,
+        })
+        .click();
+      assert.ok(
+        await page
+          .getByRole("dialog", { name: `${names[index]} — project` })
+          .isVisible(),
+      );
+      await page.keyboard.press("Escape");
+      await page.screenshot({
+        path: `test-results/project-chapter-${index + 1}.png`,
+      });
     }
-    await progress(0.15);
-    assert.ok(
-      Number(
-        await page
-          .locator('[data-passage="look"]')
-          .evaluate((e) => getComputedStyle(e).opacity),
-      ) > 0.95,
-    );
-    const imageStart = await page
-      .locator(".perspective-image")
-      .evaluate((e) => e.style.transform);
-    await progress(0.52);
-    assert.ok(
-      Number(
-        await page
-          .locator('[data-passage="closer"]')
-          .evaluate((e) => getComputedStyle(e).opacity),
-      ) > 0.95,
-    );
-    assert.ok(
-      Number(
-        await page
-          .locator('[data-passage="look"]')
-          .evaluate((e) => getComputedStyle(e).opacity),
-      ) < 0.01,
-    );
-    assert.equal(
-      await page
-        .getByRole("button", { name: "Read landscape chapter 2: LOOK CLOSER" })
-        .getAttribute("aria-current"),
-      "step",
-    );
-    await progress(0.92);
-    assert.ok(
-      Number(
-        await page
-          .locator('[data-passage="carry"]')
-          .evaluate((e) => getComputedStyle(e).opacity),
-      ) > 0.95,
-    );
-    assert.notEqual(
-      await page
-        .locator(".perspective-image")
-        .evaluate((e) => e.style.transform),
-      imageStart,
-    );
     assert.match(
-      await page.locator('[data-passage="carry"]').innerText(),
-      /END OF FIELD NOTE/,
+      await page.locator(".journey-chapter-4 .journey-footnote").innerText(),
+      /END OF THE REEL/,
     );
-    await page.locator(".perspective-image").evaluate((e) => e.decode());
-    await page.screenshot({ path: "test-results/perspective-ending.png" });
+    const from = await page.evaluate(() => scrollY);
+    await page
+      .getByRole("button", {
+        name: "Read project chapter 2: R. K. Njogu Advocates",
+      })
+      .click();
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelectorAll(".journey-chapters button")[1]
+          .getAttribute("aria-current") === "step",
+    );
+    assert.ok(
+      (await page.evaluate(() => scrollY)) < from,
+      "Chapter navigation did not move through the story",
+    );
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await story.evaluate((e) =>
+      window.scrollTo({
+        top: e.offsetTop + (e.offsetHeight - innerHeight) * 0.1,
+        behavior: "instant",
+      }),
+    );
+    await page.waitForTimeout(350);
+    const action = await page
+      .locator(".journey-chapter-1 .journey-open")
+      .boundingBox();
+    const screen = await page
+      .locator(".journey-chapter-1 .journey-screen")
+      .boundingBox();
+    assert.ok(
+      action.x + action.width < screen.x || action.y + action.height < screen.y,
+      "The website preview overlaps its story action on a laptop",
+    );
+    await page.screenshot({ path: "test-results/project-laptop.png" });
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
@@ -285,7 +321,10 @@ test("mobile menu, contact sheet, touch reveal, accordion and contact preview ar
         "is-horizontal",
       ),
     );
-    await page.getByRole("button", { name: "Explore Jeff’s Concepts" }).click();
+    await page
+      .locator("#work")
+      .getByRole("button", { name: "Explore Jeff’s Concepts", exact: true })
+      .click();
     await page
       .getByRole("dialog", { name: "Jeff’s Concepts — project" })
       .waitFor({ state: "visible" });
@@ -988,5 +1027,162 @@ test("preview hash routes switch platforms and return to the real portfolio with
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
+  }
+});
+
+test("hero shows the real work immediately and unfolds into an accessible project reel", async () => {
+  const { page, context, errors } = await pageFor();
+  try {
+    assert.equal(await page.locator(".hero-project-index button").count(), 4);
+    assert.equal(
+      await page.locator(".hero-project-reel").evaluate((e) => e.inert),
+      true,
+    );
+    await page
+      .locator(".hero-project-index img")
+      .evaluateAll((imgs) => Promise.all(imgs.map((img) => img.decode())));
+    await page
+      .getByRole("button", {
+        name: "View Jeff’s Concepts from hero",
+        exact: true,
+      })
+      .click();
+    assert.ok(
+      await page
+        .getByRole("dialog", { name: "Jeff’s Concepts — project" })
+        .isVisible(),
+    );
+    await page.keyboard.press("Escape");
+    assert.equal(
+      await page.evaluate(() =>
+        document.activeElement.getAttribute("aria-label"),
+      ),
+      "View Jeff’s Concepts from hero",
+    );
+    await page.locator("#home").evaluate((e) =>
+      window.scrollTo({
+        top: e.offsetTop + (e.offsetHeight - innerHeight) * 0.65,
+        behavior: "instant",
+      }),
+    );
+    await page.waitForTimeout(400);
+    assert.equal(
+      await page.locator(".hero-project-reel").evaluate((e) => e.inert),
+      false,
+    );
+    assert.ok(
+      Number(
+        await page
+          .locator(".hero-project-reel")
+          .evaluate((e) => getComputedStyle(e).opacity),
+      ) > 0.99,
+    );
+    await page
+      .getByRole("button", {
+        name: "Open R. K. Njogu Advocates from hero",
+        exact: true,
+      })
+      .click();
+    assert.ok(
+      await page
+        .getByRole("dialog", { name: "R. K. Njogu Advocates — project" })
+        .isVisible(),
+    );
+    await page.keyboard.press("Escape");
+    await noOverflow(page);
+    await page.screenshot({ path: "test-results/hero-project-reel.png" });
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+});
+
+test("projects connect the about section, interactive desk and final index on touch and reduced motion", async () => {
+  for (const reducedMotion of ["no-preference", "reduce"]) {
+    const { page, context, errors } = await pageFor({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion,
+    });
+    try {
+      const belief = page.locator(".belief-projects");
+      await belief.scrollIntoViewIfNeeded();
+      await belief.getByRole("button", { name: /NetflixPro \/ TV/ }).tap();
+      assert.ok(
+        await page
+          .getByRole("dialog", { name: "NetflixPro / TV — project" })
+          .isVisible(),
+      );
+      await page
+        .getByRole("button", { name: "Close preview", exact: true })
+        .tap();
+      if (reducedMotion === "reduce") {
+        const chapters = page.locator(".journey-chapter");
+        assert.equal(await chapters.count(), 4);
+        for (const chapter of await chapters.all()) {
+          assert.equal(
+            await chapter.evaluate((e) => getComputedStyle(e).position),
+            "relative",
+          );
+          assert.equal(await chapter.getAttribute("aria-hidden"), "false");
+          assert.equal(await chapter.evaluate((e) => e.inert), false);
+          assert.equal(
+            await chapter.evaluate((e) => getComputedStyle(e).opacity),
+            "1",
+          );
+          await chapter.scrollIntoViewIfNeeded();
+          await noOverflow(page);
+        }
+      } else {
+        await page.locator(".project-journey").evaluate((e) =>
+          window.scrollTo({
+            top: e.offsetTop + (e.offsetHeight - innerHeight) * 0.9,
+            behavior: "instant",
+          }),
+        );
+        await page.waitForTimeout(350);
+        const scene = page.locator(".journey-chapter-4");
+        assert.equal(await scene.getAttribute("aria-hidden"), "false");
+        await scene.locator(".journey-screen").tap();
+        assert.ok(
+          await page
+            .getByRole("dialog", { name: "NetflixPro / Mobile — project" })
+            .isVisible(),
+        );
+        await page
+          .getByRole("button", { name: "Close preview", exact: true })
+          .tap();
+      }
+      const launch = page.getByRole("link", {
+        name: "Launch NetflixPro / Mobile interactive preview",
+      });
+      await launch.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1400);
+      await launch.tap();
+      await page.locator(".native-mobile").waitFor();
+      assert.match(page.url(), /#\/preview\/netflix-mobile$/);
+      await page.getByRole("link", { name: "Back to portfolio" }).tap();
+      await page.locator(".archive-section").waitFor();
+      const footer = page.locator(".footer-project-list");
+      await footer.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1700);
+      assert.equal(await footer.getByRole("button").count(), 4);
+      await footer
+        .getByRole("button", { name: "Revisit Jeff’s Concepts" })
+        .tap();
+      assert.ok(
+        await page
+          .getByRole("dialog", { name: "Jeff’s Concepts — project" })
+          .isVisible(),
+      );
+      await page
+        .getByRole("button", { name: "Close preview", exact: true })
+        .tap();
+      await noOverflow(page);
+      assert.deepEqual(errors, []);
+    } finally {
+      await context.close();
+    }
   }
 });

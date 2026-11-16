@@ -1,49 +1,213 @@
 import { useRef, useState } from "react";
 import {
   motion,
-  useMotionValueEvent,
   useScroll,
   useTransform,
+  useMotionValueEvent,
+  type MotionValue,
 } from "motion/react";
-import { asset } from "../data/content";
+import { asset, projects, type Project } from "../data/content";
 import { useMotionPaused } from "./Motion";
 
-const chapters = ["LOOK", "LOOK CLOSER", "TAKE IT WITH YOU"];
+const chapters = [
+  {
+    label: "THE RIDE",
+    line: "Ideas that",
+    emphasis: "take you places.",
+    detail:
+      "A storefront with movement in its DNA. From the first bicycle to the finer details of the ride.",
+    discipline: "COMMERCE / MOTION / THREE.JS",
+  },
+  {
+    label: "THE CLARITY",
+    line: "Confidence,",
+    emphasis: "quietly built.",
+    detail:
+      "A considered digital home for a legal practice. Clear typography, useful information, and space to make a decision.",
+    discipline: "ART DIRECTION / EDITORIAL / WEB",
+  },
+  {
+    label: "THE BIG SCREEN",
+    line: "A bigger",
+    emphasis: "kind of feeling.",
+    detail:
+      "A cinematic interface made for the living room. Every focus state considers the person holding the remote.",
+    discipline: "KOTLIN / COMPOSE / ANDROID TV",
+  },
+  {
+    label: "THE EVERYDAY",
+    line: "The details",
+    emphasis: "go with you.",
+    detail:
+      "The same care, on a smaller canvas. Poster-led discovery, glass navigation, and a watchlist that feels personal.",
+    discipline: "KOTLIN / COMPOSE / ANDROID",
+  },
+];
+const holds = [0.1, 0.35, 0.6, 0.9];
 
-export default function PerspectiveStory() {
+function JourneyChapter({
+  index,
+  progress,
+  active,
+  onSelect,
+}: {
+  index: number;
+  progress: MotionValue<number>;
+  active: boolean;
+  onSelect: (project: Project) => void;
+}) {
+  const paused = useMotionPaused();
+  const project = projects[index];
+  const copy = chapters[index];
+  const start = index * 0.25;
+  const opacity = useTransform(
+    progress,
+    index === 0
+      ? [0, 0.19, 0.25]
+      : index === 3
+        ? [0.69, 0.77, 1]
+        : [start - 0.06, start + 0.01, start + 0.19, start + 0.25],
+    index === 0 ? [1, 1, 0] : index === 3 ? [0, 1, 1] : [0, 1, 1, 0],
+  );
+  const y = useTransform(
+    progress,
+    [Math.max(0, start - 0.06), start + 0.12, Math.min(1, start + 0.3)],
+    [65, 0, -65],
+  );
+  const artScale = useTransform(
+    progress,
+    [Math.max(0, start - 0.06), Math.min(1, start + 0.3)],
+    [1.1, 0.98],
+  );
+  const artY = useTransform(
+    progress,
+    [Math.max(0, start - 0.06), Math.min(1, start + 0.3)],
+    [45, -35],
+  );
+  return (
+    <motion.article
+      className={`journey-chapter journey-chapter-${index + 1}`}
+      data-project={project.id}
+      aria-label={`${project.name} project story`}
+      aria-hidden={!paused && !active}
+      inert={!paused && !active}
+      style={paused ? undefined : { opacity }}
+    >
+      <div className="journey-texture" aria-hidden="true" />
+      <span className="journey-large-number" aria-hidden="true">
+        {project.number}
+      </span>
+      <div className="journey-project-line mono">
+        <span>{project.name}</span>
+        <span>{copy.discipline}</span>
+      </div>
+      <motion.div className="journey-copy" style={paused ? undefined : { y }}>
+        <span className="mono">
+          {project.number} / {copy.label}
+        </span>
+        {index === 0 ? (
+          <h2 id="perspective-title">
+            {copy.line}
+            <br />
+            <i>{copy.emphasis}</i>
+          </h2>
+        ) : (
+          <h3>
+            {copy.line}
+            <br />
+            <i>{copy.emphasis}</i>
+          </h3>
+        )}
+        <p>{copy.detail}</p>
+        <button className="journey-open mono" onClick={() => onSelect(project)}>
+          EXPLORE {project.name.toUpperCase()} <span>+</span>
+        </button>
+      </motion.div>
+      <motion.div
+        className="journey-art"
+        style={paused ? undefined : { scale: artScale, y: artY }}
+      >
+        {index === 0 && (
+          <img
+            className="journey-bicycle"
+            src={asset("projects/sites/jeffs-hero-bike.webp")}
+            alt="Original ivory and red all-road bicycle from Jeff’s Concepts"
+            width="1400"
+            height="1050"
+            loading="lazy"
+          />
+        )}
+        {index === 1 && (
+          <img
+            className="journey-law-image"
+            src={asset("projects/sites/rk-njogu-office.webp")}
+            alt="Warm daylight in the legal office, from the original R. K. Njogu website"
+            width="1440"
+            height="960"
+            loading="lazy"
+          />
+        )}
+        <button
+          className={`journey-screen journey-screen-${project.format.toLowerCase()}`}
+          onClick={() => onSelect(project)}
+          aria-label={`Open ${project.name} story`}
+        >
+          {project.kind === "website" && (
+            <span className="journey-browser-bar mono">
+              <span>● ● ●</span>
+              <span>{new URL(project.url!).hostname}</span>
+            </span>
+          )}
+          <img
+            src={project.image}
+            alt={project.alt}
+            width={index === 3 ? 412 : 1440}
+            height={index === 3 ? 892 : 950}
+            loading="lazy"
+          />
+        </button>
+        {index === 2 && (
+          <span className="journey-tv-pedestal" aria-hidden="true" />
+        )}
+        {index === 3 && (
+          <div className="journey-mobile-echo" aria-hidden="true">
+            <img
+              src={projects[2].image}
+              alt=""
+              width="1200"
+              height="675"
+              loading="lazy"
+            />
+            <span className="mono">ONE IDEA. DIFFERENT DIMENSIONS.</span>
+          </div>
+        )}
+      </motion.div>
+      <span className="journey-footnote mono">
+        {index === 3
+          ? "END OF THE REEL. THE CURIOSITY CONTINUES."
+          : "TAKE YOUR TIME. THE DETAILS ARE PART OF THE STORY."}
+      </span>
+    </motion.article>
+  );
+}
+
+export default function PerspectiveStory({
+  onSelect,
+}: {
+  onSelect: (project: Project) => void;
+}) {
   const ref = useRef<HTMLElement>(null);
   const paused = useMotionPaused();
   const [chapter, setChapter] = useState(0);
-  const previousChapter = useRef(0);
   const { scrollYProgress: progress } = useScroll({
     target: ref,
     offset: ["start start", "end end"],
   });
-  const scale = useTransform(progress, [0, 0.25, 1], [0.58, 1, 1]);
-  const rotate = useTransform(progress, [0, 0.25, 1], [-6, 0, 0]);
-  const y = useTransform(progress, [0, 1], [-60, 65]);
-  const imageScale = useTransform(progress, [0, 0.5, 1], [1.26, 1.16, 1.08]);
-  const firstOpacity = useTransform(
-    progress,
-    [0, 0.08, 0.27, 0.38],
-    [0, 1, 1, 0],
-  );
-  const firstY = useTransform(progress, [0, 0.27, 0.38], [40, 0, -60]);
-  const secondOpacity = useTransform(
-    progress,
-    [0.34, 0.43, 0.63, 0.73],
-    [0, 1, 1, 0],
-  );
-  const secondY = useTransform(progress, [0.34, 0.45, 0.73], [65, 0, -45]);
-  const lastOpacity = useTransform(progress, [0.7, 0.8, 1], [0, 1, 1]);
-  const lastY = useTransform(progress, [0.7, 0.83, 1], [55, 0, 0]);
-  const warmth = useTransform(progress, [0.25, 0.8, 1], [0, 0.5, 0.55]);
+  const scale = useTransform(progress, [0, 0.1, 1], [0.8, 1, 1]);
+  const rotate = useTransform(progress, [0, 0.1, 1], [-4, 0, 0]);
   useMotionValueEvent(progress, "change", (value) => {
-    const next = value < 0.36 ? 0 : value < 0.72 ? 1 : 2;
-    if (next !== previousChapter.current) {
-      previousChapter.current = next;
-      setChapter(next);
-    }
+    const next = value < 0.225 ? 0 : value < 0.475 ? 1 : value < 0.725 ? 2 : 3;
+    setChapter((current) => (current === next ? current : next));
   });
   const goTo = (index: number) => {
     const section = ref.current;
@@ -51,111 +215,55 @@ export default function PerspectiveStory() {
     window.scrollTo({
       top:
         section.offsetTop +
-        [0.15, 0.5, 0.9][index] * (section.offsetHeight - window.innerHeight),
+        holds[index] * (section.offsetHeight - window.innerHeight),
       behavior: "smooth",
     });
   };
   return (
     <section
       ref={ref}
-      className={`perspective-section ${paused ? "is-still" : ""}`}
+      className={`perspective-section project-journey ${paused ? "is-still" : ""}`}
       data-entrance="slow-aperture"
-      aria-labelledby="perspective-title"
+      aria-label="Four projects, four perspectives"
     >
       <div className="perspective-stage">
         <span className="perspective-ghost" aria-hidden="true">
-          BREATHE.
+          IN FOCUS.
         </span>
         <motion.div
           className="perspective-window"
           style={{ scale: paused ? 1 : scale, rotate: paused ? 0 : rotate }}
         >
-          <motion.img
-            className="perspective-image"
-            src={asset("images/mountain.jpg")}
-            alt="Forested mountain ridges slowly emerging through a sea of clouds"
-            width="1900"
-            height="1188"
-            loading="lazy"
-            style={{ y: paused ? 0 : y, scale: paused ? 1 : imageScale }}
-          />
-          <div className="perspective-shade" />
-          <motion.div
-            className="perspective-warmth"
-            style={{ opacity: paused ? 0.3 : warmth }}
-          />
-          <div className="perspective-mist" aria-hidden="true" />
-          <div className="perspective-top mono">
-            <span>A FIELD NOTE / ON PAYING ATTENTION</span>
-            <span>TAKE YOUR TIME.</span>
-          </div>
-          <div className="perspective-passages">
-            <motion.div
-              className="perspective-passage"
-              data-passage="look"
-              style={paused ? undefined : { opacity: firstOpacity, y: firstY }}
-            >
-              <span className="mono">01 / STEP OUTSIDE THE OBVIOUS</span>
-              <h2 id="perspective-title">
-                A different
-                <br />
-                <i>point of view.</i>
-              </h2>
-            </motion.div>
-            <motion.div
-              className="perspective-passage"
-              data-passage="closer"
-              style={
-                paused ? undefined : { opacity: secondOpacity, y: secondY }
-              }
-            >
-              <span className="mono">
-                02 / A SMALL SHIFT IS SOMETIMES EVERYTHING
-              </span>
-              <p>
-                The familiar.
-                <br />
-                <i>Seen differently.</i>
-              </p>
-            </motion.div>
-            <motion.div
-              className="perspective-passage"
-              data-passage="carry"
-              style={paused ? undefined : { opacity: lastOpacity, y: lastY }}
-            >
-              <span className="mono">03 / SOMETHING TO CARRY WITH YOU</span>
-              <p>
-                Some things deserve
-                <br />
-                <i>a second look.</i>
-              </p>
-              <span className="perspective-ending mono">
-                END OF FIELD NOTE. KEEP THE FEELING.
-              </span>
-            </motion.div>
-          </div>
+          {projects.map((project, index) => (
+            <JourneyChapter
+              key={project.id}
+              index={index}
+              progress={progress}
+              active={chapter === index}
+              onSelect={onSelect}
+            />
+          ))}
           {!paused && (
-            <div
-              className="perspective-chapters"
-              aria-label="Landscape story chapters"
+            <nav
+              className={`journey-chapters ${chapter === 0 ? "on-light" : ""}`}
+              aria-label="Project story chapters"
             >
-              {chapters.map((name, i) => (
+              {chapters.map((item, index) => (
                 <button
-                  className={chapter === i ? "is-active" : ""}
-                  key={name}
-                  onClick={() => goTo(i)}
-                  aria-current={chapter === i ? "step" : undefined}
-                  aria-label={`Read landscape chapter ${i + 1}: ${name}`}
+                  key={item.label}
+                  onClick={() => goTo(index)}
+                  aria-label={`Read project chapter ${index + 1}: ${projects[index].name}`}
+                  aria-current={chapter === index ? "step" : undefined}
                 >
-                  <span className="mono">0{i + 1}</span>
-                  <span className="mono">{name}</span>
+                  <span className="mono">0{index + 1}</span>
+                  <span>{item.label}</span>
                 </button>
               ))}
               <motion.span
-                className="perspective-progress"
+                className="journey-progress"
                 style={{ scaleX: progress }}
               />
-            </div>
+            </nav>
           )}
         </motion.div>
       </div>

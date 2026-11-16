@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import ParticleField, { type FieldMode } from "./ParticleField";
 import { useMotionPaused } from "./Motion";
+import { projects } from "../data/content";
 
 const modes: FieldMode[] = ["Orbit", "Wave", "Scatter"];
 const descriptions = {
@@ -22,7 +23,7 @@ export default function ExperimentRoom() {
     >
       <div className="room-top mono">
         <span>03 / THE EXPERIMENT ROOM</span>
-        <span>NO BRIEF. NO FINISH LINE.</span>
+        <span>CURIOSITY, MADE INTERACTIVE.</span>
       </div>
       <div className="room-introduction">
         <h2 id="play-title">
@@ -30,11 +31,11 @@ export default function ExperimentRoom() {
           <span>?</span>
         </h2>
         <p>
-          Not every idea needs a destination.
+          A bicycle you can configure.
           <br />
-          Some just need someone
+          An interface you can feel.
           <br />
-          curious enough to follow.
+          It starts with a little curiosity.
         </p>
       </div>
       <motion.div
@@ -98,6 +99,70 @@ export default function ExperimentRoom() {
           <br />
           START WITH PLAY.
         </span>
+      </div>
+      <div className="project-preview-desk">
+        <div className="preview-desk-heading">
+          <span className="mono">FROM AN IDEA TO SOMETHING YOU CAN USE.</span>
+          <h3>
+            Go on.
+            <br />
+            <i>Get into it.</i>
+          </h3>
+          <p>
+            The TV and mobile interfaces, rebuilt for your browser. Open one and
+            make yourself at home.
+          </p>
+        </div>
+        <div className="preview-desk-devices">
+          {projects
+            .filter((project) => project.preview)
+            .map((project, index) => (
+              <motion.a
+                key={project.id}
+                href={project.preview}
+                aria-label={`Launch ${project.name} interactive preview`}
+                className={`desk-device desk-device-${project.format.toLowerCase()}`}
+                initial={
+                  paused
+                    ? false
+                    : {
+                        opacity: 0,
+                        y: index ? 100 : 65,
+                        rotate: index ? 7 : -5,
+                      }
+                }
+                whileInView={{ opacity: 1, y: 0, rotate: index ? 5 : -3 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <img
+                  src={project.image}
+                  alt={project.alt}
+                  width={index ? 412 : 1200}
+                  height={index ? 892 : 675}
+                  loading="lazy"
+                />
+                <span className="mono">
+                  {project.name} <span>OPEN PREVIEW +</span>
+                </span>
+              </motion.a>
+            ))}
+        </div>
+        <div className="preview-desk-note mono">
+          <span>OR STEP INTO ANOTHER WORLD.</span>
+          {projects
+            .filter((project) => project.url)
+            .map((project) => (
+              <a
+                key={project.id}
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {project.name} <span aria-hidden="true">+</span>
+              </a>
+            ))}
+        </div>
       </div>
     </section>
   );

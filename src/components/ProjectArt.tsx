@@ -20,7 +20,7 @@ export function ProjectArt({ project }: { project: Project }) {
         </div>
         <span className="project-art-note">
           {project.id === "jeffs-concepts"
-            ? "A CLOSER LOOK AT THE RIDE."
+            ? "MORE RIDE. LESS ROUTINE."
             : "CLARITY. CONSIDERED IN EVERY DETAIL."}
         </span>
       </div>

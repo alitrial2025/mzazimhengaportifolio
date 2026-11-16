@@ -6,7 +6,7 @@ import {
   useSpring,
 } from "motion/react";
 import { TextReveal, useMotionPaused } from "./Motion";
-import { site } from "../data/content";
+import { site, projects } from "../data/content";
 
 export default function PointerManifesto() {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,8 +69,20 @@ export default function PointerManifesto() {
           aria-hidden={!expanded}
         >
           <div className="lens-liquid" aria-hidden="true" />
+          <div className="lens-project-world" aria-hidden="true">
+            {projects.map((project) => (
+              <img
+                key={project.id}
+                src={project.image}
+                alt=""
+                width="600"
+                height="400"
+                loading="lazy"
+              />
+            ))}
+          </div>
           <span className="lens-caption mono">
-            THE OTHER SIDE OF THE THOUGHT
+            THE OTHER SIDE OF THE THOUGHT / REAL WORK
           </span>
           <p>
             Instinct

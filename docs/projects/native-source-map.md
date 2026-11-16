@@ -29,7 +29,7 @@ Prepared 16 November 2026. The portfolio previews are React reconstructions of t
 - Npro marks and navigation icons retain the original Android vector path data. The smile-profile fallback artwork is reconstructed as SVG.
 - Roboto is bundled from Google Fonts with its SIL OFL license.
 - `preview-tv.png` and `preview-mobile.png` are browser captures of the working React implementations.
-- The law-site screenshot is a browser capture of its source build. Jeff’s Concepts previews are captures of its current source build and studio, which differs from the older deployed screenshot supplied in chat.
+- The law-site screenshot is a browser capture of its source build. Jeff’s Concepts homepage capture is refreshed from `alitrial2025/jeffs-concepts` at `3b01c74`, whose modern storefront now matches the supplied “More ride. Less routine.” direction. Its unmodified `public/storefront/hero-bike.webp` is used in the project story. The law chapter uses the unmodified `public/legal/hero.webp` from the law-site repository. No screenshots or source artwork are synthetically regenerated.
 
 ## Limits of visual equivalence
 
